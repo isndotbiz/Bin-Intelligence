@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIN Intelligence Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .dashboard-card {
+            transition: transform 0.3s ease;
+            height: 100%;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+        }
+        .card-header {
+            font-weight: bold;
+        }
+        .loading-spinner {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+        .bin-table-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .dashboard-stats {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+        .chart-container {
+            position: relative;
+            height: 250px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-shield-lock-fill me-2"></i>
+                BIN Intelligence System
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#bins-table">BIN Data</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="refresh-data">Refresh Data</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Top Stats Row -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card dashboard-card">
+                    <div class="card-header bg-primary text-white">
+                        Total Exploited BINs
+                    </div>
+                    <div class="card-body d-flex justify-content-center align-items-center">
+                        <div class="dashboard-stats" id="total-bins-stat">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card dashboard-card">
+                    <div class="card-header bg-danger text-white">
+                        Exploitable BINs
+                    </div>
+                    <div class="card-body d-flex justify-content-center align-items-center">
+                        <div class="dashboard-stats" id="exploitable-bins-stat">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card dashboard-card">
+                    <div class="card-header bg-success text-white">
+                        Patched BINs
+                    </div>
+                    <div class="card-body d-flex justify-content-center align-items-center">
+                        <div class="dashboard-stats" id="patched-bins-stat">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card dashboard-card">
+                    <div class="card-header bg-info text-white">
+                        Unique Issuers
+                    </div>
+                    <div class="card-body d-flex justify-content-center align-items-center">
+                        <div class="dashboard-stats" id="unique-issuers-stat">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card dashboard-card">
+                    <div class="card-header">
+                        Exploit Types Distribution
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="exploit-types-chart"></canvas>
+                        </div>
+                        <div class="loading-spinner" id="exploit-spinner">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card dashboard-card">
+                    <div class="card-header">
+                        3DS Support Status
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="threeds-chart"></canvas>
+                        </div>
+                        <div class="loading-spinner" id="threeds-spinner">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- More Charts Row -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card dashboard-card">
+                    <div class="card-header">
+                        Top Card Brands
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="brands-chart"></canvas>
+                        </div>
+                        <div class="loading-spinner" id="brands-spinner">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card dashboard-card">
+                    <div class="card-header">
+                        Top Countries
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="countries-chart"></canvas>
+                        </div>
+                        <div class="loading-spinner" id="countries-spinner">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="row mb-4" id="bins-table">
+            <div class="col-12">
+                <div class="card dashboard-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Exploited BINs Data</span>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="show-patched-bins" checked>
+                            <label class="form-check-label" for="show-patched-bins">Show Patched BINs</label>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="bin-table-container">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>BIN</th>
+                                        <th>Exploit Type</th>
+                                        <th>Patch Status</th>
+                                        <th>Issuer</th>
+                                        <th>Brand</th>
+                                        <th>Type</th>
+                                        <th>Country</th>
+                                        <th>3DS v1</th>
+                                        <th>3DS v2</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bins-table-body">
+                                    <!-- Data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="loading-spinner" id="table-spinner">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Chart colors
+        const chartColors = [
+            '#4dc9f6', '#f67019', '#f53794', '#537bc4', '#acc236',
+            '#166a8f', '#00a950', '#58595b', '#8549ba', '#e6194b'
+        ];
+
+        // Initialize empty charts
+        let exploitTypesChart, threedsChart, brandsChart, countriesChart;
+
+        // Show loading spinners
+        document.getElementById('exploit-spinner').style.display = 'flex';
+        document.getElementById('threeds-spinner').style.display = 'flex';
+        document.getElementById('brands-spinner').style.display = 'flex';
+        document.getElementById('countries-spinner').style.display = 'flex';
+        document.getElementById('table-spinner').style.display = 'flex';
+
+        // Fetch statistics data and update dashboard
+        fetch('/api/stats')
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading spinners
+                document.getElementById('exploit-spinner').style.display = 'none';
+                document.getElementById('threeds-spinner').style.display = 'none';
+                document.getElementById('brands-spinner').style.display = 'none';
+                document.getElementById('countries-spinner').style.display = 'none';
+
+                // Update summary stats
+                document.getElementById('total-bins-stat').textContent = data.total_bins;
+                document.getElementById('exploitable-bins-stat').textContent = data.patch_status.Exploitable || 0;
+                document.getElementById('patched-bins-stat').textContent = data.patch_status.Patched || 0;
+                
+                // Count unique issuers
+                const uniqueIssuers = new Set();
+                fetch('/api/bins')
+                    .then(response => response.json())
+                    .then(binsData => {
+                        binsData.forEach(bin => {
+                            if (bin.issuer) uniqueIssuers.add(bin.issuer);
+                        });
+                        document.getElementById('unique-issuers-stat').textContent = uniqueIssuers.size;
+                    });
+
+                // Create Exploit Types chart
+                const exploitTypesCtx = document.getElementById('exploit-types-chart').getContext('2d');
+                const exploitLabels = Object.keys(data.exploit_types);
+                const exploitValues = Object.values(data.exploit_types);
+                
+                exploitTypesChart = new Chart(exploitTypesCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: exploitLabels,
+                        datasets: [{
+                            data: exploitValues,
+                            backgroundColor: chartColors.slice(0, exploitLabels.length),
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            }
+                        }
+                    }
+                });
+
+                // Create 3DS Support chart
+                const threedsCtx = document.getElementById('threeds-chart').getContext('2d');
+                const threedsLabels = Object.keys(data['3ds_support']);
+                const threedsValues = Object.values(data['3ds_support']);
+                
+                threedsChart = new Chart(threedsCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: threedsLabels,
+                        datasets: [{
+                            data: threedsValues,
+                            backgroundColor: [
+                                '#00a950',  // 3DS v1 - Green 
+                                '#4dc9f6',  // 3DS v2 - Blue
+                                '#f67019'   // No 3DS - Orange
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            }
+                        }
+                    }
+                });
+
+                // Create Brands chart
+                const brandsCtx = document.getElementById('brands-chart').getContext('2d');
+                const brandLabels = Object.keys(data.brands);
+                const brandValues = Object.values(data.brands);
+                
+                brandsChart = new Chart(brandsCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: brandLabels,
+                        datasets: [{
+                            label: 'BINs per Brand',
+                            data: brandValues,
+                            backgroundColor: chartColors.slice(0, brandLabels.length),
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+
+                // Create Countries chart
+                const countriesCtx = document.getElementById('countries-chart').getContext('2d');
+                const countryLabels = Object.keys(data.countries);
+                const countryValues = Object.values(data.countries);
+                
+                countriesChart = new Chart(countriesCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: countryLabels,
+                        datasets: [{
+                            label: 'BINs per Country',
+                            data: countryValues,
+                            backgroundColor: chartColors.slice(0, countryLabels.length),
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching statistics:', error);
+                alert('Error loading dashboard statistics. Please try refreshing the page.');
+            });
+
+        // Load BIN data table
+        fetch('/api/bins')
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading spinner
+                document.getElementById('table-spinner').style.display = 'none';
+                
+                // Populate table
+                const tableBody = document.getElementById('bins-table-body');
+                data.forEach(bin => {
+                    const row = document.createElement('tr');
+                    row.dataset.patchStatus = bin.patch_status;
+                    
+                    // Add class based on patch status
+                    if (bin.patch_status === 'Exploitable') {
+                        row.classList.add('table-danger');
+                    } else if (bin.patch_status === 'Patched') {
+                        row.classList.add('table-success');
+                    }
+                    
+                    row.innerHTML = `
+                        <td>${bin.BIN}</td>
+                        <td>${bin.exploit_type || 'Unknown'}</td>
+                        <td>${bin.patch_status || 'Unknown'}</td>
+                        <td>${bin.issuer || 'Unknown'}</td>
+                        <td>${bin.brand || 'Unknown'}</td>
+                        <td>${bin.type || 'Unknown'}</td>
+                        <td>${bin.country || 'Unknown'}</td>
+                        <td>${bin.threeDS1Supported ? '✓' : '✗'}</td>
+                        <td>${bin.threeDS2supported ? '✓' : '✗'}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching BIN data:', error);
+                document.getElementById('table-spinner').style.display = 'none';
+                
+                const tableBody = document.getElementById('bins-table-body');
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="9" class="text-center">Error loading BIN data. Please try refreshing the page.</td>`;
+                tableBody.appendChild(row);
+            });
+
+        // Toggle patched bins in table
+        document.getElementById('show-patched-bins').addEventListener('change', function() {
+            const patchedRows = document.querySelectorAll('tr[data-patch-status="Patched"]');
+            patchedRows.forEach(row => {
+                row.style.display = this.checked ? '' : 'none';
+            });
+        });
+
+        // Refresh data
+        document.getElementById('refresh-data').addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Show confirmation dialog
+            if (confirm('This will refresh all BIN data by running the BIN Intelligence System. This may take some time. Continue?')) {
+                // Show loading spinners
+                document.getElementById('exploit-spinner').style.display = 'flex';
+                document.getElementById('threeds-spinner').style.display = 'flex';
+                document.getElementById('brands-spinner').style.display = 'flex';
+                document.getElementById('countries-spinner').style.display = 'flex';
+                document.getElementById('table-spinner').style.display = 'flex';
+                
+                // Clear table
+                document.getElementById('bins-table-body').innerHTML = '';
+                
+                // Destroy existing charts
+                exploitTypesChart.destroy();
+                threedsChart.destroy();
+                brandsChart.destroy();
+                countriesChart.destroy();
+                
+                // Refresh data
+                fetch('/refresh')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            alert(`Data refreshed successfully! Found ${data.bins_count} BINs.`);
+                            // Reload page to display new data
+                            window.location.reload();
+                        } else {
+                            alert('Error refreshing data. Please try again.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error refreshing data:', error);
+                        alert('Error refreshing data. Please try again.');
+                    });
+            }
+        });
+    </script>
+</body>
+</html>
