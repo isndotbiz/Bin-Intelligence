@@ -175,6 +175,11 @@ class FraudFeedScraper:
         """
         Generate sample data for testing when no real data is found.
         This simulates finding exploited BINs with their exploit types.
+        Only focuses on major card networks:
+        - 3 series for American Express
+        - 4 series for Visa
+        - 5 series for MasterCard
+        - 6 series for Discover
         
         Args:
             count: Number of sample BINs to generate
@@ -188,38 +193,50 @@ class FraudFeedScraper:
         exploit_types = list(set(KEYWORD_TO_EXPLOIT_TYPE.values()))
         
         # Generate some common BIN prefixes for major card issuers
+        # Only include the 4 major card types as requested
         bin_prefixes = [
-            "400000",  # Visa
-            "401234",  # Visa
-            "411111",  # Visa
-            "422222",  # Visa
-            "432123",  # Visa
-            "450000",  # Visa
-            "510000",  # Mastercard
-            "520000",  # Mastercard
-            "540000",  # Mastercard
-            "550000",  # Mastercard
-            "370000",  # American Express
-            "340000",  # American Express
-            "601100",  # Discover
-            "644000",  # Discover
-            "650000",  # Discover
-            "352800",  # JCB
-            "493600",  # UnionPay
-            "622100",  # UnionPay
-            "630400",  # UnionPay
-            "356000",  # JCB
+            # Visa (4-series)
+            "400000",
+            "401234",
+            "411111",
+            "422222",
+            "432123",
+            "450000",
+            "473702", 
+            "476173",
+            
+            # Mastercard (5-series)
+            "510000",
+            "520000",
+            "540000",
+            "550000",
+            "518791",
+            "557392",
+            
+            # American Express (3-series)
+            "370000",
+            "340000",
+            "371449",
+            "378282",
+            
+            # Discover (6-series)
+            "601100",
+            "644000",
+            "650000",
+            "622126",
+            "601891",
         ]
         
         # Generate random BINs with assigned exploit types
         import random
         for i in range(count):
-            # Mix between using known prefixes and random BINs
+            # Mix between using known prefixes and random BINs that start with 3, 4, 5, or 6
             if i < len(bin_prefixes):
                 bin_code = bin_prefixes[i]
             else:
-                # Generate a random 6-digit BIN
-                bin_code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+                # Generate a random 6-digit BIN that starts with 3, 4, 5, or 6
+                first_digit = random.choice(['3', '4', '5', '6'])
+                bin_code = first_digit + ''.join([str(random.randint(0, 9)) for _ in range(5)])
             
             # Assign a random exploit type
             exploit_type = random.choice(exploit_types)
@@ -246,7 +263,12 @@ class FraudFeedScraper:
         
     def fetch_exploited_bins(self, top_n=100, sample_pages=5) -> List[Tuple[str, str]]:
         """
-        Fetch exploited BINs from public card-dump feeds and classify exploit types
+        Fetch exploited BINs from public card-dump feeds and classify exploit types.
+        Only include BINs from major card networks (3, 4, 5, or 6 series):
+        - 3 series for American Express
+        - 4 series for Visa
+        - 5 series for MasterCard
+        - 6 series for Discover
         
         Args:
             top_n: Number of top BINs to return
@@ -264,6 +286,9 @@ class FraudFeedScraper:
         # Scrape Pastebin
         pastes = self.scrape_pastebin(sample_pages)
         
+        # Valid first digits for major card networks
+        valid_first_digits = ['3', '4', '5', '6']
+        
         for paste_id, paste_title, paste_text in pastes:
             # Extract PANs from paste
             pans = self._extract_pans(paste_text)
@@ -273,7 +298,8 @@ class FraudFeedScraper:
             
             for pan in pans:
                 bin_code = self._extract_bin(pan)
-                if bin_code:
+                # Only include BINs that start with 3, 4, 5, or 6
+                if bin_code and bin_code[0] in valid_first_digits:
                     bin_counter[bin_code] += 1
                     if exploit_type:
                         bin_keywords[bin_code].append(exploit_type)

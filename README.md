@@ -8,8 +8,14 @@ A Python-based system that tracks, classifies, and analyzes exploited credit car
 - Extracts PANs (Primary Account Numbers) and their BINs using regex
 - Classifies BINs by exploit type using keyword detection
 - Filters out BINs without meaningful classification
+- Focuses only on major card networks (3, 4, 5, or 6 series BINs):
+  - 3-series: American Express
+  - 4-series: Visa
+  - 5-series: MasterCard
+  - 6-series: Discover
 - Enriches BINs with issuer information
 - Checks 3DS support and determines patch status
+- Provides a shareable fraud intelligence dashboard
 - Outputs structured data to CSV and JSON files
 
 ## Classification Keywords

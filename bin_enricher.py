@@ -99,16 +99,29 @@ class BinEnricher:
 
     def enrich_bin(self, bin_code: str) -> Optional[Dict[str, Any]]:
         """
-        Enrich a BIN with issuer information and 3DS support data
+        Enrich a BIN with issuer information and 3DS support data.
+        Only processes BINs from major card networks (3, 4, 5, or 6 series):
+        - 3 series for American Express
+        - 4 series for Visa
+        - 5 series for MasterCard
+        - 6 series for Discover
         
         Args:
             bin_code: The 6-digit BIN to enrich
             
         Returns:
-            Dictionary with BIN information or None if lookup failed
+            Dictionary with BIN information or None if lookup failed or invalid BIN
         """
+        # Valid first digits for major card networks
+        valid_first_digits = ['3', '4', '5', '6']
+        
         if not bin_code or not bin_code.isdigit() or len(bin_code) != 6:
             logger.warning(f"Invalid BIN format: {bin_code}")
+            return None
+        
+        # Only process BINs that start with 3, 4, 5, or 6
+        if bin_code[0] not in valid_first_digits:
+            logger.warning(f"Skipping BIN {bin_code}: not from a major card network (3, 4, 5, 6)")
             return None
         
         # For this implementation, skip the API lookup due to rate limits
