@@ -36,8 +36,15 @@ if DATABASE_URL.startswith('postgres://'):
 engine = create_engine(DATABASE_URL or "")  # Type check fix
 db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
 
-# Create tables if they don't exist
-Base.metadata.create_all(bind=engine)
+# Check if tables exist before creating them
+from sqlalchemy import inspect
+inspector = inspect(engine)
+if not inspector.has_table('bins'):
+    # Tables don't exist, so create them
+    Base.metadata.create_all(bind=engine)
+    logger.info("Database tables created successfully")
+else:
+    logger.info("Database tables already exist")
 
 # Initialize exploit types in the database
 def init_exploit_types():
@@ -471,12 +478,40 @@ def refresh_data():
 
 def main():
     """Main function to run the BIN Intelligence System"""
-    # Ensure we have data by running the system once if needed
-    if not os.path.exists('exploited_bins.json'):
-        run_bin_intelligence_system()
+    # Set workflow detection based on port
+    import socket
     
-    # Run the Flask app
-    app.run(host='0.0.0.0', port=5000)
+    def is_port_in_use(port):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex(('localhost', port)) == 0
+    
+    # If port 5000 is in use, assume we're in bin_intelligence_workflow
+    is_bin_intelligence_workflow = is_port_in_use(5000)
+    
+    if is_bin_intelligence_workflow:
+        # If we're in the bin_intelligence workflow, just run the intelligence system
+        logger.info("Running in the bin_intelligence workflow")
+        if not os.path.exists('exploited_bins.json'):
+            run_bin_intelligence_system()
+        else:
+            # If files exist, but no data in database, populate database from files
+            bin_count = db_session.query(func.count(BIN.id)).scalar() or 0
+            if bin_count == 0:
+                logger.info("Database is empty, loading data from files")
+                with open('exploited_bins.json', 'r') as f:
+                    data = json.load(f)
+                    if data:
+                        logger.info(f"Found {len(data)} BINs in JSON file, saving to database")
+                        save_bins_to_database(data)
+    else:
+        # If we're in the main app workflow, start the Flask app
+        logger.info("Running in the main application workflow")
+        # Ensure we have data by running the system once if needed
+        if not os.path.exists('exploited_bins.json'):
+            run_bin_intelligence_system()
+            
+        # Run the Flask app
+        app.run(host='0.0.0.0', port=5000)
 
 if __name__ == "__main__":
     main()
