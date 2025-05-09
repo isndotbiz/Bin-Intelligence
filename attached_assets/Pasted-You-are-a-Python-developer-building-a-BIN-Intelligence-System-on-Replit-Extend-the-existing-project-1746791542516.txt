@@ -1,0 +1,43 @@
+You are a Python developer building a BIN Intelligence System on Replit. Extend the existing project so that it:
+
+1. **Fetches exploited BINs & classifies exploit types**  
+   - In `fraud_feed.py`:  
+     • While scraping public card-dump feeds (e.g. Pastebin) for raw pastes, regex-extract PANs and their first 6 digits.  
+     • For each paste’s text, detect keywords and map to categories:  
+       - “skim”, “atm” → **skimming**  
+       - “cnp”, “ecom”, “online” → **card-not-present**  
+       - “gift”, “voucher” → **gift-card fraud**  
+       - “chargeback”, “fraud” → **unauthorized chargebacks**  
+       - (Feel free to add more keyword→category pairs.)  
+     • Tally per-BIN keyword counts and assign each BIN its most frequent `exploit_type`.  
+     • Have `fetch_exploited_bins(top_n=100, sample_pages=5)` return a list of `(bin, exploit_type)` tuples sorted by frequency.
+
+2. **Filter & discard BINs without meaningful history**  
+   - In `main.py`:  
+     • Call `fetch_exploited_bins()` first to get exploited BINs with types.  
+     • Discard any BINs whose `exploit_type` is `None` or empty (i.e., no classified history).  
+     • Build your processing list as only those exploited BINs.
+
+3. **Check 3DS support and determine patch status**  
+   - After enrichment & 3DS lookup, add a field `patch_status`:  
+     - If either `threeDS1Supported` or `threeDS2supported` is `True` → `"Patched"`  
+     - Else → `"Exploitable"`
+
+4. **Output**  
+   - Write `exploited_bins.csv` (and JSON if desired) containing only the classified, exploited BINs with columns:  
+     ```
+     BIN, exploit_type, patch_status, issuer, brand, type, prepaid, country, threeDS1Supported, threeDS2supported
+     ```
+   - Do NOT output any BINs that were unclassified or never appeared in the exploit feeds.
+
+5. **README.md updates**  
+   - Document how classification keywords map to exploit types.  
+   - Show how to configure `top_n`/`sample_pages` parameters.  
+   - Explain the `patch_status` logic based on 3DS support.
+
+General requirements:  
+- Use `requests.Session` with retries/backoff and `timeout=5`.  
+- Log how many exploited BINs were fetched, top 10 by frequency, and how many were classified/discarded.  
+- No new external API keys—use only the public card-dump scraping.  
+
+Paste this into your Replit Agent box to scaffold the updates.```
