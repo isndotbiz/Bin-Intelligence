@@ -59,7 +59,8 @@ def init_exploit_types():
         "malware-compromise": "Using malware to steal card data",
         "raw-dump": "Raw dump of card data without specific exploit type",
         "identity-theft": "Complete identity information including card details",
-        "cvv-compromise": "Theft of card verification values"
+        "cvv-compromise": "Theft of card verification values",
+        "bin-verification": "BIN verified through Neutrino API with likely vulnerability characteristics"
     }
     
     # Check and add each exploit type if it doesn't exist
@@ -243,18 +244,18 @@ def run_bin_intelligence_system(top_n=100, sample_pages=5):
     return enriched_bins
 
 def load_bin_data():
-    """Load BIN data from JSON file or generate if not available"""
-    try:
-        with open('exploited_bins.json', 'r') as f:
-            data = json.load(f)
-            if data:
-                logger.info(f"Loaded {len(data)} BINs from existing JSON file")
-                return data
-    except (FileNotFoundError, json.JSONDecodeError):
-        pass
-        
-    # If no file exists or it's empty, run the system to generate data
-    return run_bin_intelligence_system()
+    """Load BIN data from database, ignoring any old JSON files"""
+    # Prioritize database data and skip loading from JSON files (they may contain synthetic data)
+    bins_data = get_bins_from_database()
+    
+    # If we have data in the database, use it
+    if bins_data:
+        logger.info(f"Loaded {len(bins_data)} BINs from database")
+        return bins_data
+      
+    # Database is empty, don't try to use any old files - return empty list
+    logger.info("No BINs in database - returning empty dataset")
+    return []
 
 def get_bin_statistics(bins_data):
     """Calculate statistics for the dashboard"""
@@ -730,24 +731,35 @@ def main():
     if is_bin_intelligence_workflow:
         # If we're in the bin_intelligence workflow, just run the intelligence system
         logger.info("Running in the bin_intelligence workflow")
-        if not os.path.exists('exploited_bins.json'):
+        # Don't load from old JSON files, only generate new verified data
+        # Delete old JSON files to ensure complete removal of synthetic data
+        if os.path.exists('exploited_bins.json'):
+            os.remove('exploited_bins.json')
+            logger.info("Removed old exploited_bins.json file to prevent loading synthetic data")
+        
+        if os.path.exists('exploited_bins.csv'):
+            os.remove('exploited_bins.csv')
+            logger.info("Removed old exploited_bins.csv file to prevent loading synthetic data")
+        
+        # Always generate fresh data from the fraud feeds and Neutrino API
+        bin_count = db_session.query(func.count(BIN.id)).scalar() or 0
+        if bin_count == 0:
+            logger.info("Database is empty, generating new verified BINs")
             run_bin_intelligence_system()
         else:
-            # If files exist, but no data in database, populate database from files
-            bin_count = db_session.query(func.count(BIN.id)).scalar() or 0
-            if bin_count == 0:
-                logger.info("Database is empty, loading data from files")
-                with open('exploited_bins.json', 'r') as f:
-                    data = json.load(f)
-                    if data:
-                        logger.info(f"Found {len(data)} BINs in JSON file, saving to database")
-                        save_bins_to_database(data)
+            logger.info(f"Database already contains {bin_count} BINs")
     else:
         # If we're in the main app workflow, start the Flask app
         logger.info("Running in the main application workflow")
-        # Ensure we have data by running the system once if needed
-        if not os.path.exists('exploited_bins.json'):
-            run_bin_intelligence_system()
+        
+        # Delete old JSON files to ensure complete removal of synthetic data
+        if os.path.exists('exploited_bins.json'):
+            os.remove('exploited_bins.json')
+            logger.info("Removed old exploited_bins.json file to prevent loading synthetic data")
+        
+        if os.path.exists('exploited_bins.csv'):
+            os.remove('exploited_bins.csv')
+            logger.info("Removed old exploited_bins.csv file to prevent loading synthetic data")
             
         # Run the Flask app
         app.run(host='0.0.0.0', port=5000)
