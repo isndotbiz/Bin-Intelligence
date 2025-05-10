@@ -555,6 +555,122 @@ def api_exploits():
     except Exception as e:
         logger.error(f"Error in api_exploits: {str(e)}")
         return jsonify({"error": str(e)}), 500
+        
+        
+@app.route('/api/blocklist')
+def api_blocklist():
+    """
+    API endpoint to get a ranked list of BINs to block.
+    Returns the top 100 BINs (by default) to block based on multiple risk factors.
+    
+    Query parameters:
+    - limit: Number of BINs to include (default: 100)
+    - format: Output format ('json' or 'csv', default: 'json')
+    - include_patched: Whether to include patched BINs (default: false)
+    
+    Risk factors considered:
+    1. Patch status (exploitable gets highest priority)
+    2. Cross-border transactions (higher priority as they indicate international fraud)
+    3. 3DS support (BINs without 3DS are higher risk)
+    4. Verification status (verified BINs get higher priority as they're confirmed)
+    """
+    try:
+        limit = request.args.get('limit', default=100, type=int)
+        output_format = request.args.get('format', default='json', type=str).lower()
+        include_patched = request.args.get('include_patched', default='false', type=str).lower() == 'true'
+        
+        # Base query for BINs
+        query = db_session.query(BIN)
+        
+        # Filter out patched BINs unless specifically included
+        if not include_patched:
+            query = query.filter(BIN.patch_status == 'Exploitable')
+        
+        # Get all BINs that match our criteria
+        bins = query.all()
+        
+        # Calculate risk score for each BIN
+        scored_bins = []
+        for bin_obj in bins:
+            # Start with base score of 0
+            risk_score = 0
+            
+            # Factor 1: Patch status (0-50 points)
+            if bin_obj.patch_status == 'Exploitable':
+                risk_score += 50
+            
+            # Factor 2: Cross-border fraud (0-30 points)
+            # Check if any of the bin's exploits are cross-border
+            cross_border_exploits = db_session.query(BINExploit)\
+                .join(ExploitType)\
+                .filter(BINExploit.bin_id == bin_obj.id)\
+                .filter(ExploitType.name == 'cross-border')\
+                .all()
+            
+            if cross_border_exploits or (bin_obj.transaction_country and bin_obj.country and bin_obj.transaction_country != bin_obj.country):
+                risk_score += 30
+            
+            # Factor 3: 3DS Support (0-15 points)
+            if not bin_obj.threeds1_supported and not bin_obj.threeds2_supported:
+                risk_score += 15
+            
+            # Factor 4: Verification status (0-5 points)
+            if bin_obj.is_verified:
+                risk_score += 5
+            
+            # Add to scored bins list
+            scored_bins.append({
+                'bin_code': bin_obj.bin_code,
+                'issuer': bin_obj.issuer or 'Unknown',
+                'brand': bin_obj.brand or 'Unknown',
+                'country': bin_obj.country or 'Unknown',
+                'card_type': bin_obj.card_type or 'Unknown',
+                'is_verified': bin_obj.is_verified,
+                'threeds_supported': bin_obj.threeds1_supported or bin_obj.threeds2_supported,
+                'risk_score': risk_score,
+                'patch_status': bin_obj.patch_status or 'Unknown',
+                'exploit_types': [e.exploit_type.name for e in bin_obj.exploits] if bin_obj.exploits else []
+            })
+        
+        # Sort by risk score (highest first)
+        scored_bins = sorted(scored_bins, key=lambda x: x['risk_score'], reverse=True)
+        
+        # Limit to requested number
+        scored_bins = scored_bins[:limit]
+        
+        # Return in requested format
+        if output_format == 'csv':
+            # Generate CSV data
+            import csv
+            from io import StringIO
+            
+            output = StringIO()
+            fieldnames = ['bin_code', 'risk_score', 'issuer', 'brand', 'country', 'card_type', 
+                        'is_verified', 'threeds_supported', 'patch_status', 'exploit_types']
+            
+            writer = csv.DictWriter(output, fieldnames=fieldnames)
+            writer.writeheader()
+            
+            for bin_data in scored_bins:
+                # Convert exploit_types list to string for CSV
+                bin_data_copy = bin_data.copy()
+                bin_data_copy['exploit_types'] = ', '.join(bin_data_copy['exploit_types'])
+                writer.writerow(bin_data_copy)
+            
+            # Create response with CSV data
+            from flask import Response
+            response = Response(output.getvalue(), mimetype='text/csv')
+            response.headers["Content-Disposition"] = f"attachment; filename=bin_blocklist_{datetime.now().strftime('%Y%m%d')}.csv"
+            return response
+        else:
+            # Default to JSON
+            return jsonify({
+                'count': len(scored_bins),
+                'bins': scored_bins
+            })
+    except Exception as e:
+        logger.error(f"Error in api_blocklist: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/verify-bin/<bin_code>')
 def verify_bin(bin_code):
