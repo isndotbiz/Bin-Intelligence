@@ -1,0 +1,81 @@
+Perform a BIN (Bank Identification Number) or IIN (Issuer Identification Number) lookup.
+
+This API is ideal for fraud protection systems and payment analysis. Find out the card type, country and full issuer details for the given BIN number. Our BIN database is comprehensive and works with 6, 8 and 10 digit BINs from all countries. We update the database on a weekly basis as new cards are issued. This API also includes some extra fraud detection measures if a customer IP address is passed in. In this mode the API will also perform IP geolocation and IP blocklist lookups. You can also download the complete BIN database for use on your own systems using the Download API
+
+The current BIN database contains ~2.5 million unique BIN records covering all major card issuers globally and includes 6-digit, 8-digit and also 9 to 11-digit BIN records.
+
+Use this API to:
+Prevent and detect credit card fraud
+Identify high risk payments
+Augment sales data and reports
+Apply business rules based on card types
+
+Note on 8-digit BINs:
+The payment industry is moving away from 6-digit to 8-digit BINs due to BIN number exhaustion. The ISO announced that full implementation of the new standard is required by April 2022. Neutrino API fully supports 8-digit (and higher) BINs and we recommend if your still using 6-digit BINs that you begin transitioning to 8-digit BINs as soon as possible.
+End Point
+https://neutrinoapi.net/bin-lookup  Test API
+API Request
+Parameter	Required	Type	Default	Description
+bin-number	yes	string		The BIN or IIN number. This is the first 6, 8 or 10 digits of a card number, use 8 (or more) digits for the highest level of accuracy
+customer-ip	no	string		Pass in the customers IP address and we will return some extra information about them
+API Response
+Parameter	Type	Description
+valid	boolean	Is this a valid BIN or IIN number
+bin-number	string	The BIN number returned. You may count the number of digits in this field to determine if the BIN is likely to be based on an 8-digit or 6-digit card
+card-brand	string	The card brand (e.g. Visa or Mastercard)
+card-type	string	The card type, will always be one of: DEBIT, CREDIT, CHARGE CARD
+card-category	string	The card category. There are many different card categories the most common card categories are: CLASSIC, BUSINESS, CORPORATE, PLATINUM, PREPAID
+country	string	The full country name of the issuer
+country-code	string	The ISO 2-letter country code of the issuer
+country-code3	string	The ISO 3-letter country code of the issuer
+currency-code	string	ISO 4217 currency code associated with the country of the issuer
+issuer	string	The card issuer
+issuer-website	string	The card issuers website
+issuer-phone	string	The card issuers phone number
+is-commercial	boolean	Is this a commercial/business use card
+is-prepaid	boolean	Is this a prepaid or prepaid reloadable card
+ip-matches-bin	boolean	True if the customers IP country matches the BIN country
+ip-country	string	The country of the customers IP
+ip-country-code	string	The ISO 2-letter country code of the customers IP
+ip-country-code3	string	The ISO 3-letter country code of the customers IP
+ip-region	string	The region of the customers IP (if detectable)
+ip-city	string	The city of the customers IP (if detectable)
+ip-blocklisted	boolean	True if the customers IP is listed on one of our blocklists, see the IP Blocklist API
+ip-blocklists	array	An array of strings indicating which blocklists this IP is listed on
+API Performance
+Characteristic	Value	Description
+Avg Latency	15ms	Average RTT for requests within the same data center/region
+Max Rate	500/second	Maximum inbound request rate. Exceeding this will result in request throttling
+Max Concurrency	250	Maximum concurrent/simultaneous requests. Exceeding this will result in error code 06 [TOO MANY CONNECTIONS]
+
+API Example
+curl https://neutrinoapi.net/bin-lookup \
+--header "User-ID: <your-user-id>" \
+--header "API-Key: <your-api-key>" \
+--data-urlencode "bin-number=48334884" \
+--data-urlencode "customer-ip="
+Copy
+{
+    bin-number: "48334884",
+    card-brand: "VISA",
+    card-category: "PLATINUM",
+    card-type: "CREDIT",
+    country: "NEW ZEALAND",
+    country-code: "NZ",
+    country-code3: "NZL",
+    currency-code: "NZD",
+    ip-blocklisted: false,
+    ip-blocklists: [],
+    ip-city: "",
+    ip-country: "",
+    ip-country-code: "",
+    ip-country-code3: "",
+    ip-matches-bin: false,
+    ip-region: "",
+    is-commercial: false,
+    is-prepaid: false,
+    issuer: "KIWIBANK, LTD.",
+    issuer-phone: "",
+    issuer-website: "http://www.kiwibank.co.nz",
+    valid: true
+}

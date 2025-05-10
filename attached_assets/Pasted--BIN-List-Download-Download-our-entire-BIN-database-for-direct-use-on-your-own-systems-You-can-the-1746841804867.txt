@@ -1,0 +1,45 @@
+ BIN List Download
+Download our entire BIN database for direct use on your own systems.
+
+You can then load the BIN data directly to RAM or import into your database of choice.
+We recommend refreshing this API once per week to stay up-to-date with new BIN records.
+
+The resulting file format is a semicolon (;) delimited CSV file with the following fields:
+BIN Number
+Card Brand
+Card Type
+Card Category
+Country Code
+Country Name
+Issuer Name
+Issuer Phone
+Issuer Website
+ISO 3-letter Country Code (only present if 'include-iso3' or 'include-all' is set)
+ISO 3-letter Currency Code (only present if 'include-iso3' or 'include-all' is set)
+Commercial/Business Card Flag (only present if 'include-all' is set)
+Prepaid Card Flag (only present if 'include-all' is set)
+Notes on access and handling of 8-digit BINs:
+Access to this API is only available for verified Tier 3 account holders and is only available for commercial use, individual or personal use is prohibited. To request access to this API Contact Us.
+You must enable the 'include-8digit' option to download 8-digit and higher BIN numbers. We recommend always enabling this option as of 2024. If your still using 6-digit BINs in production you should begin transitioning to 8-digit BINs as soon as possible due to BIN number exhaustion.
+When searching the database with 8-digit BIN numbers you must implement a 'reverse search'. To do this first check for the 8-digit, 7-digit and finally 6-digit BIN numbers. This ensures you can retrieve results for older cards still using the 6-digit standard.
+
+End Point
+https://neutrinoapi.net/bin-list-download
+API Request
+Parameter	Required	Type	Default	Description
+include-iso3	no	boolean	false	Include ISO 3-letter country codes and ISO 3-letter currency codes in the data. These will be added to columns 10 and 11 respectively
+include-8digit	no	boolean	false	Include 8-digit and higher BIN codes. This option includes all 6-digit BINs and all 8-digit and higher BINs (including some 9, 10 and 11 digit BINs where available)
+include-all	no	boolean	false	Include all BINs and all available fields in the CSV file (overrides any values set for 'include-iso3' or 'include-8digit')
+output-encoding	no	string		Set this option to 'gzip' to have the output file compressed using gzip
+API Response
+CSV
+
+API Example
+curl https://neutrinoapi.net/bin-list-download \
+--header "User-ID: <your-user-id>" \
+--header "API-Key: <your-api-key>" \
+--data-urlencode "include-iso3=false" \
+--data-urlencode "include-8digit=false" \
+--data-urlencode "include-all=false" \
+--data-urlencode "output-encoding=" \
+--output "bin-list-download.csv"

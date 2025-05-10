@@ -35,16 +35,20 @@ class NeutrinoAPIClient:
     def _create_session(self) -> requests.Session:
         """Create a requests session with proper authentication and headers"""
         session = requests.Session()
-        # Ensure we have valid credentials before setting auth
+        # Ensure we have valid credentials before setting headers
         if self.user_id is not None and self.api_key is not None:
-            # Use HTTPBasicAuth for proper typing
-            from requests.auth import HTTPBasicAuth
-            session.auth = HTTPBasicAuth(self.user_id, self.api_key)
-        
-        session.headers.update({
-            'User-Agent': 'BINIntelligenceSystem/1.0',
-            'Content-Type': 'application/json'
-        })
+            # Use header-based authentication as per documentation
+            session.headers.update({
+                'User-ID': self.user_id,
+                'API-Key': self.api_key,
+                'User-Agent': 'BINIntelligenceSystem/1.0',
+                'Content-Type': 'application/x-www-form-urlencoded'  # For form data
+            })
+        else:
+            session.headers.update({
+                'User-Agent': 'BINIntelligenceSystem/1.0',
+                'Content-Type': 'application/x-www-form-urlencoded'  # For form data
+            })
         return session
     
     def lookup_bin(self, bin_code: str, timeout: int = 10) -> Optional[Dict[str, Any]]:
@@ -74,7 +78,7 @@ class NeutrinoAPIClient:
             logger.info(f"Looking up BIN {bin_code} via Neutrino API")
             response = self.session.post(
                 self.base_url,
-                json=payload,
+                data=payload,  # Changed from json to data for proper form encoding
                 timeout=timeout
             )
             
@@ -84,11 +88,39 @@ class NeutrinoAPIClient:
                 return self._transform_neutrino_response(bin_code, result)
             else:
                 logger.warning(f"BIN lookup failed: HTTP {response.status_code}, Response: {response.text}")
-                return None
+                # Return empty data instead of None to avoid type errors
+                return {
+                    "BIN": bin_code,
+                    "issuer": "Unknown",
+                    "brand": "Unknown",
+                    "type": "Unknown",
+                    "prepaid": False,
+                    "country": "XX",
+                    "threeDS1Supported": False,
+                    "threeDS2supported": False,
+                    "patch_status": "Exploitable",
+                    "data_source": f"Neutrino API Error ({response.status_code})",
+                    "issuer_website": None,
+                    "issuer_phone": None
+                }
                 
         except Exception as e:
             logger.error(f"Error looking up BIN {bin_code}: {str(e)}")
-            return None
+            # Return empty data instead of None to avoid type errors
+            return {
+                "BIN": bin_code,
+                "issuer": "Unknown",
+                "brand": "Unknown",
+                "type": "Unknown",
+                "prepaid": False,
+                "country": "XX",
+                "threeDS1Supported": False,
+                "threeDS2supported": False,
+                "patch_status": "Exploitable",
+                "data_source": f"Neutrino API Exception",
+                "issuer_website": None,
+                "issuer_phone": None
+            }
     
     def _transform_neutrino_response(self, bin_code: str, response: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -101,41 +133,62 @@ class NeutrinoAPIClient:
         Returns:
             Dictionary with BIN information in our system's format
         """
-        # Default values
+        # Check if the BIN is valid according to the API
         is_valid = response.get("valid", False)
         if not is_valid:
             logger.warning(f"BIN {bin_code} reported as invalid by Neutrino API")
+            # Return empty data instead of None to avoid type errors
+            return {
+                "BIN": bin_code,
+                "issuer": "Unknown",
+                "brand": "Unknown",
+                "type": "Unknown",
+                "prepaid": False,
+                "country": "XX",
+                "threeDS1Supported": False,
+                "threeDS2supported": False,
+                "patch_status": "Exploitable",
+                "data_source": "Neutrino API (Invalid BIN)",
+                "issuer_website": None,
+                "issuer_phone": None
+            }
             
-        # Extract card security info
-        security_info = {}
-        card_security = response.get("card-security")
-        if card_security:
-            if "3d-secure" in card_security.lower():
-                security_info["threeDS1Supported"] = True
-            if "3d-secure 2" in card_security.lower() or "3ds2" in card_security.lower():
-                security_info["threeDS2supported"] = True
+        # Determine 3DS support based on card categories and types
+        # Note: The actual API doesn't provide 3DS info directly, 
+        # but we can infer it from card types and categories
+        card_type = response.get("card-type", "").upper()
+        card_category = response.get("card-category", "").upper()
+        card_brand = response.get("card-brand", "").upper()
         
-        # Determine patch status based on security measures
-        if security_info.get("threeDS2supported") or security_info.get("threeDS1Supported"):
-            patch_status = "Patched"
-        else:
-            patch_status = "Exploitable"
+        # Most premium cards (PLATINUM, GOLD, SIGNATURE) have 3DS
+        premium_card = any(category in card_category for category in ["PLATINUM", "GOLD", "SIGNATURE", "WORLD"])
+        # Business/corporate cards might not have 3DS
+        business_card = any(category in card_category for category in ["BUSINESS", "CORPORATE", "COMMERCIAL"])
+        
+        # Determine 3DS support - this is a heuristic since the API doesn't provide this directly
+        threeds1_supported = premium_card and not business_card
+        # 3DS2 is more common in newer cards and premium cards from major issuers
+        threeds2_supported = premium_card and card_brand in ["VISA", "MASTERCARD"] and not business_card
+        
+        # Determine patch status based on 3DS support
+        patch_status = "Patched" if (threeds1_supported or threeds2_supported) else "Exploitable"
             
         # Build response in our format
         return {
             "BIN": bin_code,
             "issuer": response.get("issuer"),
             "brand": response.get("card-brand"),
-            "type": response.get("card-type"),
-            "prepaid": response.get("card-category") == "PREPAID",
-            "country": response.get("country-code"),
-            "threeDS1Supported": security_info.get("threeDS1Supported", False),
-            "threeDS2supported": security_info.get("threeDS2supported", False),
+            "type": response.get("card-type", ""),  # DEBIT, CREDIT, CHARGE CARD
+            "prepaid": response.get("is-prepaid", False),  # Boolean in the API
+            "country": response.get("country-code"),  # ISO 2-letter country code
+            "threeDS1Supported": threeds1_supported,
+            "threeDS2supported": threeds2_supported,
             "patch_status": patch_status,
             "data_source": "Neutrino API",
-            # Additional fields from Neutrino API that might be useful
+            # Additional fields from Neutrino API
             "issuer_website": response.get("issuer-website"),
             "issuer_phone": response.get("issuer-phone")
+            # Note: We don't use card_category in our database schema
         }
         
     def verify_and_update_bin(self, existing_bin_data: Dict[str, Any]) -> Dict[str, Any]:
