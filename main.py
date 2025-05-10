@@ -267,8 +267,20 @@ def get_bin_statistics(bins_data):
     # Count patch status
     patch_status = Counter([bin_data.get('patch_status', 'unknown') for bin_data in bins_data])
     
-    # Count by brand
-    brands = Counter([bin_data.get('brand', 'unknown') for bin_data in bins_data])
+    # Count by brand - normalize names to avoid duplicates
+    brand_mapping = {
+        'AMEX': 'AMERICAN EXPRESS',
+        'AMERICAN EXPRESS': 'AMERICAN EXPRESS',
+        'MASTERCARD': 'MASTERCARD',
+        'VISA': 'VISA',
+        'DISCOVER': 'DISCOVER'
+    }
+    
+    # Normalize brand names to prevent duplicates in the graph
+    brands = Counter([
+        brand_mapping.get(bin_data.get('brand', '').upper(), bin_data.get('brand', 'unknown'))
+        for bin_data in bins_data
+    ])
     
     # Count by country
     countries = Counter([bin_data.get('country', 'unknown') for bin_data in bins_data])
@@ -363,12 +375,27 @@ def get_database_statistics():
         for status, count in patch_results:
             patch_status[status or "unknown"] = count
         
-        # Get brand counts
-        brands = {}
+        # Get brand counts - normalize names to avoid duplicates
+        brand_mapping = {
+            'AMEX': 'AMERICAN EXPRESS',
+            'AMERICAN EXPRESS': 'AMERICAN EXPRESS',
+            'MASTERCARD': 'MASTERCARD', 
+            'VISA': 'VISA',
+            'DISCOVER': 'DISCOVER'
+        }
+        
+        # Get all brands from database
         brand_results = db_session.query(BIN.brand, func.count(BIN.id)) \
-            .group_by(BIN.brand).order_by(func.count(BIN.id).desc()).limit(10).all()
+            .group_by(BIN.brand).all()
+            
+        # Normalize and combine brands
+        normalized_brands = {}
         for brand, count in brand_results:
-            brands[brand or "unknown"] = count
+            brand_key = brand_mapping.get((brand or "").upper(), brand or "unknown")
+            normalized_brands[brand_key] = normalized_brands.get(brand_key, 0) + count
+            
+        # Sort by count and limit to top 10
+        brands = dict(sorted(normalized_brands.items(), key=lambda x: x[1], reverse=True)[:10])
         
         # Get country counts
         countries = {}

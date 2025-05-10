@@ -14,8 +14,7 @@ class BinEnricher:
     
     # List of allowed card brands - we only want to track these major networks
     ALLOWED_BRANDS = [
-        "VISA", "MASTERCARD", "AMERICAN EXPRESS", "DISCOVER",
-        "VISA", "MASTERCARD", "AMEX", "DISCOVER"  # Common variations
+        "VISA", "MASTERCARD", "AMERICAN EXPRESS", "AMEX", "DISCOVER"
     ]
     
     def __init__(self):
