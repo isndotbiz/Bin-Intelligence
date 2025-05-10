@@ -59,8 +59,7 @@ def init_exploit_types():
         "malware-compromise": "Using malware to steal card data",
         "raw-dump": "Raw dump of card data without specific exploit type",
         "identity-theft": "Complete identity information including card details",
-        "cvv-compromise": "Theft of card verification values",
-        "bin-verification": "BIN verified through Neutrino API with likely vulnerability characteristics"
+        "cvv-compromise": "Theft of card verification values"
     }
     
     # Check and add each exploit type if it doesn't exist
@@ -526,6 +525,9 @@ def api_exploits():
 @app.route('/verify-bin/<bin_code>')
 def verify_bin(bin_code):
     """Verify a BIN using the Neutrino API for real-world data"""
+    # Ensure we have a clean session by expiring all pending objects
+    db_session.expire_all()
+    
     try:
         # First check if the BIN exists in our database
         bin_record = db_session.query(BIN).filter(BIN.bin_code == bin_code).first()
@@ -560,12 +562,18 @@ def verify_bin(bin_code):
             "issuer_phone": neutrino_data.get("issuer_phone")
         }
         
-        # Apply updates using setattr to avoid LSP errors
-        for key, value in updates.items():
-            setattr(bin_record, key, value)
-        
-        # Commit changes to database
-        db_session.commit()
+        try:
+            # Apply updates using setattr to avoid LSP errors
+            for key, value in updates.items():
+                setattr(bin_record, key, value)
+            
+            # Commit changes to database
+            db_session.commit()
+        except Exception as db_error:
+            # Roll back transaction on database error
+            db_session.rollback()
+            logger.error(f"Database error during BIN verification of {bin_code}: {str(db_error)}")
+            return jsonify({"status": "error", "message": f"Database error: {str(db_error)}"}), 500
         
         # Handle datetime conversion for the response
         verified_at_str = None
@@ -598,6 +606,12 @@ def verify_bin(bin_code):
         })
             
     except Exception as e:
+        # Ensure we roll back on any error
+        try:
+            db_session.rollback()
+        except:
+            pass
+        
         logger.error(f"Error verifying BIN {bin_code}: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -680,10 +694,7 @@ def generate_more_bins():
         enriched_bins = bin_enricher.enrich_bins_batch(bins_to_verify[:count*2])
         
         # Only using verified data from Neutrino API, no synthetic exploit classifications
-        # Mark all generated BINs with a standard exploit type
-        for bin_data in enriched_bins:
-            # Set a consistent exploit type for generated/verified BINs
-            bin_data["exploit_type"] = "bin-verification"
+        # Generated BINs don't need an exploit type as they're not coming from a compromised source
         
         if not enriched_bins:
             return jsonify({'status': 'error', 'message': 'No BINs could be verified with Neutrino API. Please check your API credentials.'}), 400
