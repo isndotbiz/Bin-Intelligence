@@ -317,16 +317,20 @@ def index():
     return render_template('dashboard.html')
 
 def get_bins_from_database():
-    """Query BINs from the database"""
+    """Query BINs from the database with improved transaction handling"""
+    # Create a new session for this operation
+    from sqlalchemy.orm import Session
+    session = Session(engine)
+    
     try:
-        # Get all BINs from database
-        bin_records = db_session.query(BIN).all()
+        # Get all BINs from database using the new session
+        bin_records = session.query(BIN).all()
         
         # Convert to list of dictionaries
         bins_data = []
         for bin_record in bin_records:
             # Get the primary exploit type for this BIN
-            exploit_record = db_session.query(BINExploit, ExploitType) \
+            exploit_record = session.query(BINExploit, ExploitType) \
                 .join(ExploitType) \
                 .filter(BINExploit.bin_id == bin_record.id) \
                 .order_by(BINExploit.frequency.desc()) \
@@ -367,8 +371,19 @@ def get_bins_from_database():
         
     except Exception as e:
         logger.error(f"Error loading BINs from database: {str(e)}")
+        # Make sure to rollback on error
+        try:
+            session.rollback()
+        except:
+            pass
         # Fallback to file if database query fails
         return load_bin_data()
+    finally:
+        # Always close the session to avoid connection leaks
+        try:
+            session.close()
+        except:
+            pass
 
 def get_database_statistics():
     """Get statistics from the database"""
@@ -574,13 +589,17 @@ def api_blocklist():
     3. 3DS support (BINs without 3DS are higher risk)
     4. Verification status (verified BINs get higher priority as they're confirmed)
     """
+    # Create a dedicated session for this operation to avoid transaction issues
+    from sqlalchemy.orm import Session
+    session = Session(engine)
+    
     try:
         limit = request.args.get('limit', default=100, type=int)
         output_format = request.args.get('format', default='json', type=str).lower()
         include_patched = request.args.get('include_patched', default='false', type=str).lower() == 'true'
         
-        # Base query for BINs
-        query = db_session.query(BIN)
+        # Base query for BINs using the dedicated session
+        query = session.query(BIN)
         
         # Filter out patched BINs unless specifically included
         if not include_patched:
@@ -601,35 +620,50 @@ def api_blocklist():
             
             # Factor 2: Cross-border fraud (0-30 points)
             # Check if any of the bin's exploits are cross-border
-            cross_border_exploits = db_session.query(BINExploit)\
+            cross_border_exploits = session.query(BINExploit)\
                 .join(ExploitType)\
                 .filter(BINExploit.bin_id == bin_obj.id)\
                 .filter(ExploitType.name == 'cross-border')\
                 .all()
             
-            if cross_border_exploits or (bin_obj.transaction_country and bin_obj.country and bin_obj.transaction_country != bin_obj.country):
+            # Use proper null checks for attribute access
+            has_cross_border = bool(cross_border_exploits)
+            has_transaction_country = bin_obj.transaction_country is not None and bin_obj.transaction_country != ''
+            has_country = bin_obj.country is not None and bin_obj.country != ''
+            countries_different = has_transaction_country and has_country and bin_obj.transaction_country != bin_obj.country
+            
+            if has_cross_border or countries_different:
                 risk_score += 30
             
             # Factor 3: 3DS Support (0-15 points)
-            if not bin_obj.threeds1_supported and not bin_obj.threeds2_supported:
+            has_3ds1 = bin_obj.threeds1_supported is True
+            has_3ds2 = bin_obj.threeds2_supported is True
+            if not has_3ds1 and not has_3ds2:
                 risk_score += 15
             
             # Factor 4: Verification status (0-5 points)
-            if bin_obj.is_verified:
+            if bin_obj.is_verified is True:
                 risk_score += 5
             
-            # Add to scored bins list
+            # Get exploit types using the proper method
+            exploit_types = []
+            if bin_obj.exploits:
+                for e in bin_obj.exploits:
+                    if e.exploit_type and e.exploit_type.name:
+                        exploit_types.append(e.exploit_type.name)
+            
+            # Add to scored bins list with proper null checks
             scored_bins.append({
                 'bin_code': bin_obj.bin_code,
                 'issuer': bin_obj.issuer or 'Unknown',
                 'brand': bin_obj.brand or 'Unknown',
                 'country': bin_obj.country or 'Unknown',
                 'card_type': bin_obj.card_type or 'Unknown',
-                'is_verified': bin_obj.is_verified,
-                'threeds_supported': bin_obj.threeds1_supported or bin_obj.threeds2_supported,
+                'is_verified': bin_obj.is_verified is True,
+                'threeds_supported': has_3ds1 or has_3ds2,
                 'risk_score': risk_score,
                 'patch_status': bin_obj.patch_status or 'Unknown',
-                'exploit_types': [e.exploit_type.name for e in bin_obj.exploits] if bin_obj.exploits else []
+                'exploit_types': exploit_types
             })
         
         # Sort by risk score (highest first)
@@ -670,7 +704,18 @@ def api_blocklist():
             })
     except Exception as e:
         logger.error(f"Error in api_blocklist: {str(e)}")
+        # Make sure to rollback the transaction on error
+        try:
+            session.rollback()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500
+    finally:
+        # Always close the session to prevent connection leaks
+        try:
+            session.close()
+        except:
+            pass
 
 @app.route('/verify-bin/<bin_code>')
 def verify_bin(bin_code):
