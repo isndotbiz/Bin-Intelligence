@@ -677,11 +677,11 @@ def generate_more_bins():
         logger.info(f"Verifying {len(bins_to_verify)} BINs with Neutrino API")
         enriched_bins = bin_enricher.enrich_bins_batch(bins_to_verify[:count*2])
         
-        # Add exploit type classification (since we don't have real exploit data for these)
-        exploit_types = ["card-not-present", "skimming", "track-data-compromise", "cvv-compromise"]
-        
+        # Only using verified data from Neutrino API, no synthetic exploit classifications
+        # Mark all generated BINs with a standard exploit type
         for bin_data in enriched_bins:
-            bin_data["exploit_type"] = random.choice(exploit_types)
+            # Set a consistent exploit type for generated/verified BINs
+            bin_data["exploit_type"] = "bin-verification"
         
         if not enriched_bins:
             return jsonify({'status': 'error', 'message': 'No BINs could be verified with Neutrino API. Please check your API credentials.'}), 400
