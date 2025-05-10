@@ -308,6 +308,14 @@ def get_bins_from_database():
             
             exploit_type = exploit_record[1].name if exploit_record else None
             
+            # Handle datetime conversion outside the dict
+            verified_at_str = None
+            if bin_record.verified_at is not None:
+                try:
+                    verified_at_str = bin_record.verified_at.isoformat()
+                except:
+                    pass
+            
             bin_data = {
                 "BIN": bin_record.bin_code,
                 "issuer": bin_record.issuer,
@@ -323,7 +331,7 @@ def get_bins_from_database():
                 "data_source": bin_record.data_source,
                 "issuer_website": bin_record.issuer_website,
                 "issuer_phone": bin_record.issuer_phone,
-                "verified_at": bin_record.verified_at.isoformat() if bin_record.verified_at else None
+                "verified_at": verified_at_str
             }
             bins_data.append(bin_data)
         
@@ -550,6 +558,14 @@ def verify_bin(bin_code):
         # Commit changes to database
         db_session.commit()
         
+        # Handle datetime conversion for the response
+        verified_at_str = None
+        if bin_record.verified_at is not None:
+            try:
+                verified_at_str = bin_record.verified_at.isoformat()
+            except:
+                pass
+                
         # Return the updated data
         return jsonify({
             "status": "success", 
@@ -566,7 +582,7 @@ def verify_bin(bin_code):
                 "patch_status": bin_record.patch_status,
                 "data_source": bin_record.data_source,
                 "is_verified": bin_record.is_verified,
-                "verified_at": None if bin_record.verified_at is None else bin_record.verified_at.isoformat(),
+                "verified_at": verified_at_str,
                 "issuer_website": bin_record.issuer_website,
                 "issuer_phone": bin_record.issuer_phone
             }
