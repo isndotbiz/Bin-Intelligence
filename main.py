@@ -318,7 +318,12 @@ def get_bins_from_database():
                 "threeDS1Supported": bin_record.threeds1_supported,
                 "threeDS2supported": bin_record.threeds2_supported,
                 "patch_status": bin_record.patch_status,
-                "exploit_type": exploit_type
+                "exploit_type": exploit_type,
+                "is_verified": bin_record.is_verified,
+                "data_source": bin_record.data_source,
+                "issuer_website": bin_record.issuer_website,
+                "issuer_phone": bin_record.issuer_phone,
+                "verified_at": bin_record.verified_at.isoformat() if bin_record.verified_at else None
             }
             bins_data.append(bin_data)
         
@@ -371,6 +376,10 @@ def get_database_statistics():
             .filter(BIN.threeds2_supported == True).scalar() or 0
         no_3ds_count = db_session.query(func.count(BIN.id)) \
             .filter(BIN.threeds1_supported == False, BIN.threeds2_supported == False).scalar() or 0
+            
+        # Get verification status counts
+        verified_count = db_session.query(func.count(BIN.id)) \
+            .filter(BIN.is_verified == True).scalar() or 0
         
         # Prepare statistics
         stats = {
@@ -379,6 +388,10 @@ def get_database_statistics():
             'patch_status': patch_status,
             'brands': brands,
             'countries': countries,
+            'verification': {
+                'verified': verified_count,
+                'unverified': total_bins - verified_count
+            },
             '3ds_support': {
                 '3DS_v1': threeds1_count,
                 '3DS_v2': threeds2_count,
@@ -553,7 +566,7 @@ def verify_bin(bin_code):
                 "patch_status": bin_record.patch_status,
                 "data_source": bin_record.data_source,
                 "is_verified": bin_record.is_verified,
-                "verified_at": bin_record.verified_at.isoformat() if bin_record.verified_at else None,
+                "verified_at": None if bin_record.verified_at is None else bin_record.verified_at.isoformat(),
                 "issuer_website": bin_record.issuer_website,
                 "issuer_phone": bin_record.issuer_phone
             }
