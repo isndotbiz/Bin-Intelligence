@@ -58,7 +58,8 @@ class BinEnricher:
             return None
             
         # Filter out unwanted card brands
-        if bin_data.get("brand") and bin_data.get("brand").upper() not in [b.upper() for b in self.ALLOWED_BRANDS]:
+        brand = bin_data.get("brand")
+        if brand and brand.upper() not in [b.upper() for b in self.ALLOWED_BRANDS]:
             logger.info(f"Skipping BIN {bin_code}: brand '{bin_data.get('brand')}' not in allowed list")
             return None
             

@@ -90,7 +90,15 @@ def process_exploited_bins(top_n: int = 100, sample_pages: int = 5) -> List[Dict
     # Step 1: Fetch exploited BINs from fraud feeds
     logger.info(f"Fetching exploited BINs (top_n={top_n}, sample_pages={sample_pages})...")
     fraud_feed = FraudFeedScraper()
-    exploited_bins = fraud_feed.fetch_exploited_bins(top_n=top_n, sample_pages=sample_pages)
+    
+    # Make sure we're using the updated method
+    if hasattr(fraud_feed, "_generate_sample_data"):
+        # This is for backward compatibility
+        logger.warning("Using deprecated _generate_sample_data method. Update your code.")
+        exploited_bins = fraud_feed.fetch_exploited_bins(top_n=top_n, sample_pages=sample_pages) 
+    else:
+        # New method that doesn't use synthetic data
+        exploited_bins = fraud_feed.fetch_exploited_bins(top_n=top_n, sample_pages=sample_pages)
     
     # Step 2: Filter BINs without meaningful classification
     logger.info("Filtering BINs without meaningful classification...")
