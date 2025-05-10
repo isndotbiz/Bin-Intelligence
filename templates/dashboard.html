@@ -596,54 +596,91 @@
             // Show loading spinner for table
             document.getElementById('table-spinner').style.display = 'flex';
             
-            // Call generate endpoint
-            fetch('/generate-bins?count=100')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        // Enable button
-                        this.disabled = false;
-                        this.textContent = 'Generate 100 More BINs';
+            // Counter variables for batched generation
+            let batchSize = 20;
+            let totalBatches = 5; // 5 batches of 20 = 100 BINs
+            let completedBatches = 0;
+            let totalCreated = 0;
+            let totalUpdated = 0;
+            let currentTotal = 0;
+            let hadError = false;
+            
+            const button = this;
+            
+            // Function to generate BINs in batches
+            function generateBatch() {
+                if (completedBatches >= totalBatches || hadError) {
+                    // All batches processed or error occurred
+                    finishOperation();
+                    return;
+                }
+                
+                // Update button text to show progress
+                button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generating... (${completedBatches * batchSize}/${totalBatches * batchSize})`;
+                
+                // Call generate endpoint for a single batch
+                fetch(`/generate-bins?count=${batchSize}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            // Increment counters
+                            completedBatches++;
+                            totalCreated += data.new_bins;
+                            totalUpdated += data.updated_bins;
+                            currentTotal = data.total_bins;
+                            
+                            // Continue with next batch
+                            generateBatch();
+                        } else {
+                            // Error occurred
+                            console.error('Error generating BINs:', data.message);
+                            hadError = true;
+                            alert(`Error generating BINs: ${data.message || 'Unknown error'}`);
+                            finishOperation();
+                        }
+                    })
+                    .catch(error => {
+                        // Error occurred
+                        console.error('Error generating BINs:', error);
+                        hadError = true;
+                        alert('Error generating BINs. Please try again.');
+                        finishOperation();
+                    });
+            }
+            
+            // Function to finish the operation
+            function finishOperation() {
+                // Enable button
+                button.disabled = false;
+                button.textContent = 'Generate 100 More BINs';
+                
+                if (!hadError) {
+                    // Show success message
+                    alert(`Successfully generated ${totalCreated} new BINs, updated ${totalUpdated} existing. Total: ${currentTotal} BINs.`);
+                }
+                
+                // Reload current page of BIN data to show new BINs
+                loadBINData(currentPage);
+                
+                // Reload stats to update dashboard
+                fetch('/api/stats')
+                    .then(response => response.json())
+                    .then(statsData => {
+                        // Update summary stats
+                        document.getElementById('total-bins-stat').textContent = statsData.total_bins;
+                        document.getElementById('exploitable-bins-stat').textContent = statsData.patch_status.Exploitable || 0;
+                        document.getElementById('patched-bins-stat').textContent = statsData.patch_status.Patched || 0;
                         
-                        // Show success message
-                        alert(`Successfully generated ${data.new_bins} new BINs. Total: ${data.total_bins} BINs.`);
-                        
-                        // Reload current page of BIN data to show new BINs
-                        loadBINData(currentPage);
-                        
-                        // Reload stats to update dashboard
-                        fetch('/api/stats')
-                            .then(response => response.json())
-                            .then(statsData => {
-                                // Update summary stats
-                                document.getElementById('total-bins-stat').textContent = statsData.total_bins;
-                                document.getElementById('exploitable-bins-stat').textContent = statsData.patch_status.Exploitable || 0;
-                                document.getElementById('patched-bins-stat').textContent = statsData.patch_status.Patched || 0;
-                                
-                                // Update charts
-                                updateCharts(statsData);
-                            });
-                    } else {
-                        // Enable button
-                        this.disabled = false;
-                        this.textContent = 'Generate 100 More BINs';
-                        
-                        // Show error message
-                        alert(`Error generating BINs: ${data.message || 'Unknown error'}`);
-                        document.getElementById('table-spinner').style.display = 'none';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error generating BINs:', error);
-                    
-                    // Enable button
-                    this.disabled = false;
-                    this.textContent = 'Generate 100 More BINs';
-                    
-                    // Show error message
-                    alert('Error generating BINs. Please try again.');
-                    document.getElementById('table-spinner').style.display = 'none';
-                });
+                        // Update charts
+                        updateCharts(statsData);
+                    });
+                
+                // Hide loading spinner
+                document.getElementById('table-spinner').style.display = 'none';
+            }
+            
+            // Start generating batches
+            generateBatch();
         });
         
         // Function to update charts with new data

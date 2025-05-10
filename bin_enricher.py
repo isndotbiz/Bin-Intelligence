@@ -88,8 +88,8 @@ class BinEnricher:
         try:
             from neutrino_api import NeutrinoAPIClient
             
-            # Add a small delay to avoid hitting rate limits
-            time.sleep(0.5)
+            # Add a minimal delay to avoid hitting rate limits
+            time.sleep(0.1)
             
             client = NeutrinoAPIClient()
             bin_data = client.lookup_bin(bin_code)

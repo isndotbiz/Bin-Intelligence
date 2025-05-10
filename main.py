@@ -609,8 +609,9 @@ def generate_more_bins():
         existing_bins_count = db_session.query(func.count(BIN.id)).scalar() or 0
         logger.info(f"Currently have {existing_bins_count} BINs in the database")
         
-        # How many new BINs to generate
-        count = int(request.args.get('count', 10))
+        # Process 20 BINs at a time to avoid timeouts (client can call multiple times)
+        count = min(int(request.args.get('count', 10)), 20)
+        logger.info(f"Generating {count} BINs (limited to prevent timeouts)")
         
         # Get all existing BINs to avoid duplicates
         existing_bins = set(bin_record.bin_code for bin_record in db_session.query(BIN.bin_code).all())
