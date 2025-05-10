@@ -186,6 +186,64 @@
             </div>
         </div>
 
+        <!-- Blocklist Section -->
+        <div class="row mb-4" id="bins-blocklist">
+            <div class="col-12">
+                <div class="card dashboard-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Top BINs To Block</span>
+                        <div class="d-flex align-items-center">
+                            <div class="dropdown me-2">
+                                <button class="btn btn-sm btn-outline-danger dropdown-toggle" type="button" id="downloadBlocklistBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-download"></i> Download Blocklist
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="downloadBlocklistBtn">
+                                    <li><a class="dropdown-item" href="/api/blocklist?format=json" target="_blank">JSON Format</a></li>
+                                    <li><a class="dropdown-item" href="/api/blocklist?format=csv" target="_blank">CSV Format</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="/api/blocklist?limit=200&format=json" target="_blank">Top 200 BINs (JSON)</a></li>
+                                    <li><a class="dropdown-item" href="/api/blocklist?limit=200&format=csv" target="_blank">Top 200 BINs (CSV)</a></li>
+                                </ul>
+                            </div>
+                            <button id="refresh-blocklist" class="btn btn-sm btn-danger">
+                                <i class="bi bi-shield-x"></i> Refresh Blocklist
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-danger">
+                            <strong><i class="bi bi-exclamation-triangle-fill"></i> High Risk BINs</strong>: These BINs have been identified as high-risk based on our analysis of exploit patterns, cross-border fraud, and 3DS support. Consider blocking these BINs on your payment site to reduce fraud exposure.
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>BIN</th>
+                                        <th>Risk Score</th>
+                                        <th>Brand</th>
+                                        <th>Issuer</th>
+                                        <th>Country</th>
+                                        <th>Type</th>
+                                        <th>Exploit Types</th>
+                                        <th>3DS</th>
+                                        <th>Patch Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="blocklist-table-body">
+                                    <!-- Blocklist data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="loading-spinner" id="blocklist-spinner">
+                            <div class="spinner-border text-danger" role="status">
+                                <span class="visually-hidden">Loading blocklist...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Data Table -->
         <div class="row mb-4" id="bins-table">
             <div class="col-12">
@@ -822,6 +880,84 @@
                         alert('Error refreshing data. Please try again.');
                     });
             }
+        });
+
+        // Function to load the BIN blocklist
+        function loadBlocklist(limit = 25) {
+            // Show loading spinner
+            document.getElementById('blocklist-spinner').style.display = 'flex';
+            
+            // Clear any existing data
+            document.getElementById('blocklist-table-body').innerHTML = '';
+            
+            // Fetch the blocklist from API
+            fetch(`/api/blocklist?limit=${limit}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Hide loading spinner
+                    document.getElementById('blocklist-spinner').style.display = 'none';
+                    
+                    // Get the table body
+                    const tableBody = document.getElementById('blocklist-table-body');
+                    
+                    // If no data, show message
+                    if (!data.bins || data.bins.length === 0) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td colspan="9" class="text-center">No high-risk BINs found. Congratulations!</td>`;
+                        tableBody.appendChild(row);
+                        return;
+                    }
+                    
+                    // For each BIN, create a table row
+                    data.bins.forEach(bin => {
+                        const row = document.createElement('tr');
+                        
+                        // Highlight based on risk score
+                        if (bin.risk_score >= 90) {
+                            row.classList.add('table-danger');
+                        } else if (bin.risk_score >= 70) {
+                            row.classList.add('table-warning');
+                        }
+                        
+                        // Format exploit types as badges
+                        const exploitBadges = bin.exploit_types.map(type => 
+                            `<span class="badge bg-danger me-1">${type}</span>`
+                        ).join(' ');
+                        
+                        row.innerHTML = `
+                            <td><strong>${bin.bin_code}</strong></td>
+                            <td><span class="badge ${bin.risk_score >= 90 ? 'bg-danger' : (bin.risk_score >= 70 ? 'bg-warning text-dark' : 'bg-info text-dark')}">${bin.risk_score}</span></td>
+                            <td>${bin.brand}</td>
+                            <td>${bin.issuer}</td>
+                            <td>${bin.country}</td>
+                            <td>${bin.card_type}</td>
+                            <td>${exploitBadges || '<span class="badge bg-secondary">None</span>'}</td>
+                            <td>${bin.threeds_supported ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-danger">No</span>'}</td>
+                            <td><span class="badge ${bin.patch_status === 'Exploitable' ? 'bg-danger' : 'bg-success'}">${bin.patch_status}</span></td>
+                        `;
+                        
+                        tableBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading blocklist:', error);
+                    // Hide loading spinner
+                    document.getElementById('blocklist-spinner').style.display = 'none';
+                    
+                    // Show error message
+                    const tableBody = document.getElementById('blocklist-table-body');
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td colspan="9" class="text-center text-danger">Error loading blocklist. Please try refreshing the page.</td>`;
+                    tableBody.appendChild(row);
+                });
+        }
+        
+        // Load the blocklist when page loads
+        loadBlocklist();
+        
+        // Add event listener for refresh blocklist button
+        document.getElementById('refresh-blocklist').addEventListener('click', function() {
+            loadBlocklist();
         });
     </script>
 </body>
