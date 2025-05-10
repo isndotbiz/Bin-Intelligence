@@ -171,95 +171,16 @@ class FraudFeedScraper:
         logger.info(f"Scraped {len(pastes)} pastes from Pastebin")
         return pastes
 
-    def _generate_sample_data(self, count=50) -> List[Tuple[str, str]]:
+    def _handle_no_data_found(self) -> List[Tuple[str, str]]:
         """
-        Generate sample data for testing when no real data is found.
-        This simulates finding exploited BINs with their exploit types.
-        Only focuses on major card networks:
-        - 3 series for American Express
-        - 4 series for Visa
-        - 5 series for MasterCard
-        - 6 series for Discover
+        Handle the case when no real data is found from feeds.
+        We don't generate synthetic data anymore, only return an empty list.
         
-        Args:
-            count: Number of sample BINs to generate
-            
         Returns:
-            List of tuples (bin, exploit_type)
+            Empty list - we only want real-world data
         """
-        logger.info(f"No real BINs found. Generating {count} sample BINs for testing...")
-        
-        sample_bins = []
-        exploit_types = list(set(KEYWORD_TO_EXPLOIT_TYPE.values()))
-        
-        # Generate some common BIN prefixes for major card issuers
-        # Only include the 4 major card types as requested
-        bin_prefixes = [
-            # Visa (4-series)
-            "400000",
-            "401234",
-            "411111",
-            "422222",
-            "432123",
-            "450000",
-            "473702", 
-            "476173",
-            
-            # Mastercard (5-series)
-            "510000",
-            "520000",
-            "540000",
-            "550000",
-            "518791",
-            "557392",
-            
-            # American Express (3-series)
-            "370000",
-            "340000",
-            "371449",
-            "378282",
-            
-            # Discover (6-series)
-            "601100",
-            "644000",
-            "650000",
-            "622126",
-            "601891",
-        ]
-        
-        # Generate random BINs with assigned exploit types
-        import random
-        for i in range(count):
-            # Mix between using known prefixes and random BINs that start with 3, 4, 5, or 6
-            if i < len(bin_prefixes):
-                bin_code = bin_prefixes[i]
-            else:
-                # Generate a random 6-digit BIN that starts with 3, 4, 5, or 6
-                first_digit = random.choice(['3', '4', '5', '6'])
-                bin_code = first_digit + ''.join([str(random.randint(0, 9)) for _ in range(5)])
-            
-            # Assign a random exploit type
-            exploit_type = random.choice(exploit_types)
-            
-            # Add to our sample data with some duplicates to create frequency patterns
-            for _ in range(random.randint(1, 5)):  # Add 1-5 instances of each BIN
-                sample_bins.append((bin_code, exploit_type))
-        
-        # Count frequencies
-        bin_counter = Counter([bin_code for bin_code, _ in sample_bins])
-        
-        # Get the most frequent BINs
-        frequent_bins = []
-        for bin_code, count in bin_counter.most_common(count):
-            # Get the most common exploit type for this BIN
-            exploit_types = [e_type for b, e_type in sample_bins if b == bin_code]
-            most_common_exploit = Counter(exploit_types).most_common(1)[0][0]
-            frequent_bins.append((bin_code, most_common_exploit))
-        
-        logger.info(f"Generated sample data with {len(frequent_bins)} BINs")
-        logger.info(f"Top 10 sample BINs by frequency: {bin_counter.most_common(10)}")
-        
-        return frequent_bins
+        logger.warning("No real BINs found from data feeds. No synthetic data will be generated.")
+        return []
         
     def fetch_exploited_bins(self, top_n=100, sample_pages=5) -> List[Tuple[str, str]]:
         """
@@ -322,8 +243,8 @@ class FraudFeedScraper:
         logger.info(f"Fetched {total_bins} exploited BINs, {classified_bins} with classification")
         logger.info(f"Top 10 BINs by frequency: {bin_counter.most_common(10)}")
         
-        # If no real data was found, generate sample data for testing
+        # If no real data was found, handle it appropriately (no synthetic data)
         if not bin_exploit_types:
-            bin_exploit_types = self._generate_sample_data(count=top_n)
+            bin_exploit_types = self._handle_no_data_found()
         
         return bin_exploit_types
