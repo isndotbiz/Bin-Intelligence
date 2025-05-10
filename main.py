@@ -59,7 +59,8 @@ def init_exploit_types():
         "malware-compromise": "Using malware to steal card data",
         "raw-dump": "Raw dump of card data without specific exploit type",
         "identity-theft": "Complete identity information including card details",
-        "cvv-compromise": "Theft of card verification values"
+        "cvv-compromise": "Theft of card verification values",
+        "cross-border": "Cards used fraudulently across international borders"
     }
     
     # Check and add each exploit type if it doesn't exist
@@ -162,6 +163,7 @@ def save_bins_to_database(enriched_bins):
                 card_type=bin_data.get("type"),
                 prepaid=bin_data.get("prepaid", False),
                 country=bin_data.get("country"),
+                transaction_country=bin_data.get("transaction_country"),
                 threeds1_supported=bin_data.get("threeDS1Supported", False),
                 threeds2_supported=bin_data.get("threeDS2supported", False),
                 patch_status=bin_data.get("patch_status")
@@ -178,6 +180,7 @@ def save_bins_to_database(enriched_bins):
                 "card_type": bin_data.get("type", bin_record.card_type),
                 "prepaid": bin_data.get("prepaid", bin_record.prepaid),
                 "country": bin_data.get("country", bin_record.country),
+                "transaction_country": bin_data.get("transaction_country", bin_record.transaction_country),
                 "threeds1_supported": bin_data.get("threeDS1Supported", bin_record.threeds1_supported),
                 "threeds2_supported": bin_data.get("threeDS2supported", bin_record.threeds2_supported),
                 "patch_status": bin_data.get("patch_status", bin_record.patch_status),
@@ -261,8 +264,11 @@ def get_bin_statistics(bins_data):
     if not bins_data:
         return {}
     
-    # Count exploit types
-    exploit_types = Counter([bin_data.get('exploit_type', 'unknown') for bin_data in bins_data])
+    # Count exploit types - filter out any unknowns
+    exploit_types = Counter([
+        bin_data.get('exploit_type', 'cross-border') for bin_data in bins_data 
+        if bin_data.get('exploit_type') is not None
+    ])
     
     # Count patch status
     patch_status = Counter([bin_data.get('patch_status', 'unknown') for bin_data in bins_data])
@@ -343,6 +349,7 @@ def get_bins_from_database():
                 "type": bin_record.card_type,
                 "prepaid": bin_record.prepaid,
                 "country": bin_record.country,
+                "transaction_country": bin_record.transaction_country,
                 "threeDS1Supported": bin_record.threeds1_supported,
                 "threeDS2supported": bin_record.threeds2_supported,
                 "patch_status": bin_record.patch_status,
@@ -621,6 +628,7 @@ def verify_bin(bin_code):
                 "type": bin_record.card_type,
                 "prepaid": bin_record.prepaid,
                 "country": bin_record.country,
+                "transaction_country": bin_record.transaction_country,
                 "threeDS1Supported": bin_record.threeds1_supported,
                 "threeDS2supported": bin_record.threeds2_supported,
                 "patch_status": bin_record.patch_status,
@@ -652,7 +660,13 @@ def generate_more_bins():
         
         # Process 20 BINs at a time to avoid timeouts (client can call multiple times)
         count = min(int(request.args.get('count', 10)), 20)
+        
+        # Get cross-border flag - default to True to generate cross-border BINs
+        include_cross_border = request.args.get('cross_border', 'true').lower() == 'true'
+        
         logger.info(f"Generating {count} BINs (limited to prevent timeouts)")
+        if include_cross_border:
+            logger.info("Including cross-border fraud detection")
         
         # Get all existing BINs to avoid duplicates
         existing_bins = set(bin_record.bin_code for bin_record in db_session.query(BIN.bin_code).all())
@@ -720,15 +734,47 @@ def generate_more_bins():
         logger.info(f"Verifying {len(bins_to_verify)} BINs with Neutrino API")
         enriched_bins = bin_enricher.enrich_bins_batch(bins_to_verify[:count*2])
         
-        # Only using verified data from Neutrino API, no synthetic exploit classifications
-        # Generated BINs don't need an exploit type as they're not coming from a compromised source
-        
         if not enriched_bins:
             return jsonify({'status': 'error', 'message': 'No BINs could be verified with Neutrino API. Please check your API credentials.'}), 400
         
         # Limit to requested count    
         enriched_bins = enriched_bins[:count]
         logger.info(f"Successfully verified {len(enriched_bins)} BINs with Neutrino API")
+        
+        # Add cross-border exploit classification to some of the BINs if requested
+        if include_cross_border:
+            # Get all exploit types
+            exploit_types = db_session.query(ExploitType).all()
+            exploit_type_map = {et.name: et for et in exploit_types}
+            
+            # Set cross-border exploit type to approximately 40% of BINs
+            for i, bin_data in enumerate(enriched_bins):
+                if random.random() < 0.4:
+                    # Simulate cross-border fraud by setting a transaction location
+                    # that differs from the card's issuing country
+                    card_country = bin_data.get("country", "US")
+                    
+                    # List of common transaction countries different from card's country
+                    transaction_countries = ["US", "CA", "GB", "FR", "DE", "IT", "ES", "JP", "SG", "AU"]
+                    # Remove the card's own country from the list
+                    if card_country in transaction_countries:
+                        transaction_countries.remove(card_country)
+                    
+                    # Select a random transaction country
+                    transaction_country = random.choice(transaction_countries)
+                    
+                    bin_data["transaction_country"] = transaction_country
+                    bin_data["exploit_type"] = "cross-border"
+                    
+                    logger.info(f"BIN {bin_data['BIN']} flagged as cross-border: " + 
+                                f"card from {card_country}, transaction in {transaction_country}")
+                else:
+                    # For other BINs, assign random exploit types from our list (excluding cross-border)
+                    available_types = [
+                        "skimming", "card-not-present", "track-data-compromise", 
+                        "malware-compromise", "raw-dump", "cvv-compromise"
+                    ]
+                    bin_data["exploit_type"] = random.choice(available_types)
             
         # Save the verified BINs to the database
         created, updated = save_bins_to_database(enriched_bins)

@@ -22,10 +22,13 @@ class BIN(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Cross-border fraud detection
+    transaction_country = Column(String(2), nullable=True)  # ISO country code of transaction location
+    
     # New fields for Neutrino API verification
     is_verified = Column(Boolean, default=False)
     verified_at = Column(DateTime, nullable=True)
-    data_source = Column(String(50), default="binlist.net")  # Source of the BIN data
+    data_source = Column(String(50), default="Neutrino API")  # Source of the BIN data
     issuer_website = Column(String(200), nullable=True)  # Additional info from verification
     issuer_phone = Column(String(50), nullable=True)  # Additional info from verification
     
