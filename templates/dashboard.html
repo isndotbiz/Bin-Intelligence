@@ -481,6 +481,16 @@
                             row.style.display = 'none';
                         });
                     }
+                    
+                    // Filter out non-major brand cards (only show Visa, MasterCard, Amex, Discover)
+                    const majorBrands = ['visa', 'mastercard', 'american express', 'amex', 'discover'];
+                    document.querySelectorAll('tr[data-brand]').forEach(row => {
+                        const brand = row.getAttribute('data-brand').toLowerCase();
+                        // Hide any row with a brand not in our major brands list
+                        if (!majorBrands.some(majorBrand => brand.includes(majorBrand))) {
+                            row.style.display = 'none';
+                        }
+                    });
                 })
                 .catch(error => {
                     console.error('Error fetching BIN data:', error);

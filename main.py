@@ -614,35 +614,58 @@ def generate_more_bins():
         # Get all existing BINs to avoid duplicates
         existing_bins = set(bin_record.bin_code for bin_record in db_session.query(BIN.bin_code).all())
         
-        # Create a list of common BIN prefixes for major card networks
-        bin_prefixes = {
-            # Visa (4-series)
-            "4": ["40", "41", "42", "43", "44", "45", "46", "47", "48", "49"],
+        # Known vulnerable BIN prefixes by issuer (based on historical exploits)
+        # These prefixes are more likely to be exploitable and lack proper 3DS support
+        known_vulnerable_prefixes = [
+            # Visa (4-series) - specific prefixes known to have lower 3DS adoption
+            "404", "411", "422", "424", "427", "431", "438", "440", "446", "448", 
+            "449", "451", "453", "459", "462", "465", "474", "475", "476", "485",
             
-            # Mastercard (5-series)
-            "5": ["51", "52", "53", "54", "55"],
+            # Mastercard (5-series) - specific prefixes with historically lower security
+            "510", "512", "517", "518", "523", "528", "530", "539", "542", "547",
+            "549", "555", "559",
             
-            # American Express (3-series)
-            "3": ["34", "37"],
+            # American Express (3-series) - specific prefixes with lower 3DS adoption
+            "340", "346", "373", "374",
             
-            # Discover (6-series)
-            "6": ["60", "64", "65"]
-        }
+            # Discover (6-series) - specific prefixes known to have lower 3DS adoption
+            "601", "644", "649", "650", "651", "654", "659", "690"
+        ]
         
-        logger.info(f"Generating {count} new verified BINs using Neutrino API")
+        logger.info(f"Generating {count} new verified BINs using Neutrino API (focusing on potentially exploitable BINs)")
         
         # Generate BIN combinations to try
         import random
         bins_to_verify = []
         
-        # Distribute among different card networks
+        # Combine historical vulnerable BINs with some truly random ones for diversity
         for _ in range(count * 2):  # Generate more than needed to account for verification failures
-            network = random.choice(list(bin_prefixes.keys()))
-            prefix = random.choice(bin_prefixes[network])
-            
-            # Complete the 6-digit BIN
-            remaining_digits = 6 - len(prefix)
-            bin_code = prefix + ''.join([str(random.randint(0, 9)) for _ in range(remaining_digits)])
+            # 80% of the time use known vulnerable prefixes, 20% of the time use random generation
+            if random.random() < 0.8 and known_vulnerable_prefixes:
+                # Use known vulnerable prefixes
+                prefix = random.choice(known_vulnerable_prefixes)
+                
+                # Complete the 6-digit BIN
+                remaining_digits = 6 - len(prefix)
+                bin_code = prefix + ''.join([str(random.randint(0, 9)) for _ in range(remaining_digits)])
+            else:
+                # Generate completely random BIN from major card networks
+                first_digit = random.choice(['3', '4', '5', '6'])
+                if first_digit == '3':
+                    # For Amex, use only 34 or 37 as prefix
+                    second_digit = random.choice(['4', '7'])
+                    bin_code = '3' + second_digit + ''.join([str(random.randint(0, 9)) for _ in range(4)])
+                elif first_digit == '5':
+                    # For Mastercard, make sure second digit is 1-5
+                    second_digit = str(random.randint(1, 5))
+                    bin_code = '5' + second_digit + ''.join([str(random.randint(0, 9)) for _ in range(4)])
+                elif first_digit == '6':
+                    # For Discover, use only 60, 64, 65 as prefix
+                    second_digit = random.choice(['0', '4', '5'])
+                    bin_code = '6' + second_digit + ''.join([str(random.randint(0, 9)) for _ in range(4)])
+                else:
+                    # For Visa (4-series), any random 5 digits will do
+                    bin_code = '4' + ''.join([str(random.randint(0, 9)) for _ in range(5)])
             
             if bin_code not in existing_bins and bin_code not in bins_to_verify:
                 bins_to_verify.append(bin_code)
