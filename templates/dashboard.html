@@ -214,6 +214,8 @@
                                         <th>Country</th>
                                         <th>3DS v1</th>
                                         <th>3DS v2</th>
+                                        <th>Verified</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="bins-table-body">
@@ -460,6 +462,12 @@
                             <td>${bin.country || 'Unknown'}</td>
                             <td>${bin.threeDS1Supported ? '✓' : '✗'}</td>
                             <td>${bin.threeDS2supported ? '✓' : '✗'}</td>
+                            <td>${bin.is_verified ? '<span class="badge bg-success">Verified</span>' : '<span class="badge bg-secondary">Not Verified</span>'}</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary verify-bin-btn" data-bin="${bin.BIN}">
+                                    Verify with Neutrino
+                                </button>
+                            </td>
                         `;
                         tableBody.appendChild(row);
                     });
@@ -661,6 +669,52 @@
             countriesChart.data.datasets[0].data = countryValues;
             countriesChart.update();
         }
+
+        // Event listener for verify bin buttons - use event delegation
+        document.addEventListener('click', function(e) {
+            // Check if the clicked element has the verify-bin-btn class
+            if (e.target && e.target.classList.contains('verify-bin-btn')) {
+                e.preventDefault();
+                
+                // Get the BIN from the data attribute
+                const binCode = e.target.getAttribute('data-bin');
+                if (!binCode) return;
+                
+                // Disable button and show loading state
+                e.target.disabled = true;
+                e.target.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Verifying...';
+                
+                // Call the verify endpoint
+                fetch(`/verify-bin/${binCode}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            // Show success message
+                            alert(`BIN ${binCode} verified successfully.`);
+                            
+                            // Reload current page of BIN data to show updated verification status
+                            loadBINData(currentPage);
+                        } else {
+                            // Show error message
+                            alert(`Error verifying BIN ${binCode}: ${data.message || 'Unknown error'}`);
+                            
+                            // Re-enable the button
+                            e.target.disabled = false;
+                            e.target.textContent = 'Verify with Neutrino';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error verifying BIN:', error);
+                        
+                        // Show error message
+                        alert(`Error verifying BIN ${binCode}. Please try again.`);
+                        
+                        // Re-enable the button
+                        e.target.disabled = false;
+                        e.target.textContent = 'Verify with Neutrino';
+                    });
+            }
+        });
 
         // Refresh data
         document.getElementById('refresh-data').addEventListener('click', function(e) {

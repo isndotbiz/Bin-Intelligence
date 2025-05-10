@@ -13,6 +13,7 @@ from fraud_feed import FraudFeedScraper
 from bin_enricher import BinEnricher
 from utils import write_csv, write_json
 from models import Base, BIN, ExploitType, BINExploit, ScanHistory
+from neutrino_api import NeutrinoAPIClient
 
 # Configure logging
 logging.basicConfig(
@@ -491,6 +492,76 @@ def api_exploits():
     except Exception as e:
         logger.error(f"Error in api_exploits: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+@app.route('/verify-bin/<bin_code>')
+def verify_bin(bin_code):
+    """Verify a BIN using the Neutrino API for real-world data"""
+    try:
+        # First check if the BIN exists in our database
+        bin_record = db_session.query(BIN).filter(BIN.bin_code == bin_code).first()
+        if not bin_record:
+            return jsonify({"status": "error", "message": f"BIN {bin_code} not found in database"}), 404
+            
+        # Check if credentials are available
+        try:
+            client = NeutrinoAPIClient()
+        except ValueError as e:
+            return jsonify({"status": "error", "message": f"Neutrino API credentials not configured: {str(e)}"}), 400
+            
+        # Lookup the BIN with Neutrino API
+        neutrino_data = client.lookup_bin(bin_code)
+        if not neutrino_data:
+            return jsonify({"status": "error", "message": f"Failed to verify BIN {bin_code} with Neutrino API"}), 400
+            
+        # Update the database record with verified data - use setattr to avoid LSP errors
+        updates = {
+            "issuer": neutrino_data.get("issuer", bin_record.issuer),
+            "brand": neutrino_data.get("brand", bin_record.brand),
+            "card_type": neutrino_data.get("type", bin_record.card_type),
+            "prepaid": neutrino_data.get("prepaid", bin_record.prepaid),
+            "country": neutrino_data.get("country", bin_record.country),
+            "threeds1_supported": neutrino_data.get("threeDS1Supported", bin_record.threeds1_supported),
+            "threeds2_supported": neutrino_data.get("threeDS2supported", bin_record.threeds2_supported),
+            "patch_status": neutrino_data.get("patch_status", bin_record.patch_status),
+            "data_source": "Neutrino API",
+            "is_verified": True,
+            "verified_at": datetime.utcnow(),
+            "issuer_website": neutrino_data.get("issuer_website"),
+            "issuer_phone": neutrino_data.get("issuer_phone")
+        }
+        
+        # Apply updates using setattr to avoid LSP errors
+        for key, value in updates.items():
+            setattr(bin_record, key, value)
+        
+        # Commit changes to database
+        db_session.commit()
+        
+        # Return the updated data
+        return jsonify({
+            "status": "success", 
+            "message": f"BIN {bin_code} verified successfully",
+            "data": {
+                "BIN": bin_record.bin_code,
+                "issuer": bin_record.issuer,
+                "brand": bin_record.brand,
+                "type": bin_record.card_type,
+                "prepaid": bin_record.prepaid,
+                "country": bin_record.country,
+                "threeDS1Supported": bin_record.threeds1_supported,
+                "threeDS2supported": bin_record.threeds2_supported,
+                "patch_status": bin_record.patch_status,
+                "data_source": bin_record.data_source,
+                "is_verified": bin_record.is_verified,
+                "verified_at": bin_record.verified_at.isoformat() if bin_record.verified_at else None,
+                "issuer_website": bin_record.issuer_website,
+                "issuer_phone": bin_record.issuer_phone
+            }
+        })
+            
+    except Exception as e:
+        logger.error(f"Error verifying BIN {bin_code}: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/generate-bins')
 def generate_more_bins():
