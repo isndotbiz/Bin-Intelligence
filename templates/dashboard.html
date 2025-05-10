@@ -226,6 +226,17 @@
                                 <span class="visually-hidden">Loading...</span>
                             </div>
                         </div>
+                        <!-- Pagination Controls -->
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div id="pagination-info" class="text-muted">
+                                Showing 0-0 of 0 BINs
+                            </div>
+                            <nav aria-label="BIN data pagination">
+                                <ul class="pagination" id="pagination-controls">
+                                    <!-- Pagination will be generated here -->
+                                </ul>
+                            </nav>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -271,7 +282,9 @@
                 const uniqueIssuers = new Set();
                 fetch('/api/bins')
                     .then(response => response.json())
-                    .then(binsData => {
+                    .then(responseData => {
+                        // Extract bins from response (may be in bins property or directly in the response)
+                        const binsData = responseData.bins || responseData;
                         binsData.forEach(bin => {
                             if (bin.issuer) uniqueIssuers.add(bin.issuer);
                         });
@@ -393,49 +406,157 @@
                 alert('Error loading dashboard statistics. Please try refreshing the page.');
             });
 
-        // Load BIN data table
-        fetch('/api/bins')
-            .then(response => response.json())
-            .then(data => {
-                // Hide loading spinner
-                document.getElementById('table-spinner').style.display = 'none';
-                
-                // Populate table
-                const tableBody = document.getElementById('bins-table-body');
-                data.forEach(bin => {
-                    const row = document.createElement('tr');
-                    row.dataset.patchStatus = bin.patch_status;
+        // Pagination variables
+        let currentPage = 1;
+        const perPage = 200; // Maximum 200 BINs per page
+        
+        // Function to load BIN data with pagination
+        function loadBINData(page = 1) {
+            // Show loading spinner
+            document.getElementById('table-spinner').style.display = 'flex';
+            
+            // Clear table
+            const tableBody = document.getElementById('bins-table-body');
+            tableBody.innerHTML = '';
+            
+            // Fetch paginated data
+            fetch(`/api/bins?page=${page}&per_page=${perPage}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Hide loading spinner
+                    document.getElementById('table-spinner').style.display = 'none';
                     
-                    // Add class based on patch status
-                    if (bin.patch_status === 'Exploitable') {
-                        row.classList.add('table-danger');
-                    } else if (bin.patch_status === 'Patched') {
-                        row.classList.add('table-success');
+                    // Store current page
+                    currentPage = data.pagination.current_page;
+                    
+                    // Update pagination info
+                    const startIdx = (currentPage - 1) * perPage + 1;
+                    const endIdx = Math.min(startIdx + data.bins.length - 1, data.pagination.total_bins);
+                    document.getElementById('pagination-info').textContent = 
+                        `Showing ${startIdx}-${endIdx} of ${data.pagination.total_bins} BINs`;
+                    
+                    // Generate pagination controls
+                    generatePagination(data.pagination);
+                    
+                    // Populate table
+                    data.bins.forEach(bin => {
+                        const row = document.createElement('tr');
+                        row.dataset.patchStatus = bin.patch_status;
+                        
+                        // Add class based on patch status
+                        if (bin.patch_status === 'Exploitable') {
+                            row.classList.add('table-danger');
+                        } else if (bin.patch_status === 'Patched') {
+                            row.classList.add('table-success');
+                        }
+                        
+                        row.innerHTML = `
+                            <td>${bin.BIN}</td>
+                            <td>${bin.exploit_type || 'Unknown'}</td>
+                            <td>${bin.patch_status || 'Unknown'}</td>
+                            <td>${bin.issuer || 'Unknown'}</td>
+                            <td>${bin.brand || 'Unknown'}</td>
+                            <td>${bin.type || 'Unknown'}</td>
+                            <td>${bin.country || 'Unknown'}</td>
+                            <td>${bin.threeDS1Supported ? '✓' : '✗'}</td>
+                            <td>${bin.threeDS2supported ? '✓' : '✗'}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                    
+                    // Apply filter for patched BINs
+                    const showPatched = document.getElementById('show-patched-bins').checked;
+                    if (!showPatched) {
+                        const patchedRows = document.querySelectorAll('tr[data-patch-status="Patched"]');
+                        patchedRows.forEach(row => {
+                            row.style.display = 'none';
+                        });
                     }
+                })
+                .catch(error => {
+                    console.error('Error fetching BIN data:', error);
+                    document.getElementById('table-spinner').style.display = 'none';
                     
-                    row.innerHTML = `
-                        <td>${bin.BIN}</td>
-                        <td>${bin.exploit_type || 'Unknown'}</td>
-                        <td>${bin.patch_status || 'Unknown'}</td>
-                        <td>${bin.issuer || 'Unknown'}</td>
-                        <td>${bin.brand || 'Unknown'}</td>
-                        <td>${bin.type || 'Unknown'}</td>
-                        <td>${bin.country || 'Unknown'}</td>
-                        <td>${bin.threeDS1Supported ? '✓' : '✗'}</td>
-                        <td>${bin.threeDS2supported ? '✓' : '✗'}</td>
-                    `;
+                    const tableBody = document.getElementById('bins-table-body');
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td colspan="9" class="text-center">Error loading BIN data. Please try refreshing the page.</td>`;
                     tableBody.appendChild(row);
+                    
+                    // Reset pagination info
+                    document.getElementById('pagination-info').textContent = 'Showing 0-0 of 0 BINs';
+                    document.getElementById('pagination-controls').innerHTML = '';
                 });
-            })
-            .catch(error => {
-                console.error('Error fetching BIN data:', error);
-                document.getElementById('table-spinner').style.display = 'none';
-                
-                const tableBody = document.getElementById('bins-table-body');
-                const row = document.createElement('tr');
-                row.innerHTML = `<td colspan="9" class="text-center">Error loading BIN data. Please try refreshing the page.</td>`;
-                tableBody.appendChild(row);
-            });
+        }
+        
+        // Function to generate pagination controls
+        function generatePagination(pagination) {
+            const paginationContainer = document.getElementById('pagination-controls');
+            paginationContainer.innerHTML = '';
+            
+            // Only show pagination if we have more than one page
+            if (pagination.total_pages <= 1) {
+                return;
+            }
+            
+            // Previous button
+            const prevLi = document.createElement('li');
+            prevLi.className = `page-item ${pagination.current_page === 1 ? 'disabled' : ''}`;
+            const prevLink = document.createElement('a');
+            prevLink.className = 'page-link';
+            prevLink.href = '#';
+            prevLink.textContent = 'Previous';
+            prevLink.setAttribute('aria-label', 'Previous');
+            if (pagination.current_page > 1) {
+                prevLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    loadBINData(pagination.current_page - 1);
+                });
+            }
+            prevLi.appendChild(prevLink);
+            paginationContainer.appendChild(prevLi);
+            
+            // Page numbers
+            const maxPages = 5; // Maximum number of page links to show
+            const startPage = Math.max(1, pagination.current_page - Math.floor(maxPages / 2));
+            const endPage = Math.min(pagination.total_pages, startPage + maxPages - 1);
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const pageLi = document.createElement('li');
+                pageLi.className = `page-item ${i === pagination.current_page ? 'active' : ''}`;
+                const pageLink = document.createElement('a');
+                pageLink.className = 'page-link';
+                pageLink.href = '#';
+                pageLink.textContent = i.toString();
+                if (i !== pagination.current_page) {
+                    pageLink.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        loadBINData(i);
+                    });
+                }
+                pageLi.appendChild(pageLink);
+                paginationContainer.appendChild(pageLi);
+            }
+            
+            // Next button
+            const nextLi = document.createElement('li');
+            nextLi.className = `page-item ${pagination.current_page === pagination.total_pages ? 'disabled' : ''}`;
+            const nextLink = document.createElement('a');
+            nextLink.className = 'page-link';
+            nextLink.href = '#';
+            nextLink.textContent = 'Next';
+            nextLink.setAttribute('aria-label', 'Next');
+            if (pagination.current_page < pagination.total_pages) {
+                nextLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    loadBINData(pagination.current_page + 1);
+                });
+            }
+            nextLi.appendChild(nextLink);
+            paginationContainer.appendChild(nextLi);
+        }
+        
+        // Initial load of BIN data
+        loadBINData();
 
         // Toggle patched bins in table
         document.getElementById('show-patched-bins').addEventListener('change', function() {
@@ -444,6 +565,102 @@
                 row.style.display = this.checked ? '' : 'none';
             });
         });
+        
+        // Generate more BINs button
+        document.getElementById('generate-more-bins').addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Disable button to prevent multiple clicks
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generating...';
+            
+            // Show loading spinner for table
+            document.getElementById('table-spinner').style.display = 'flex';
+            
+            // Call generate endpoint
+            fetch('/generate-bins?count=100')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Enable button
+                        this.disabled = false;
+                        this.textContent = 'Generate 100 More BINs';
+                        
+                        // Show success message
+                        alert(`Successfully generated ${data.new_bins} new BINs. Total: ${data.total_bins} BINs.`);
+                        
+                        // Reload current page of BIN data to show new BINs
+                        loadBINData(currentPage);
+                        
+                        // Reload stats to update dashboard
+                        fetch('/api/stats')
+                            .then(response => response.json())
+                            .then(statsData => {
+                                // Update summary stats
+                                document.getElementById('total-bins-stat').textContent = statsData.total_bins;
+                                document.getElementById('exploitable-bins-stat').textContent = statsData.patch_status.Exploitable || 0;
+                                document.getElementById('patched-bins-stat').textContent = statsData.patch_status.Patched || 0;
+                                
+                                // Update charts
+                                updateCharts(statsData);
+                            });
+                    } else {
+                        // Enable button
+                        this.disabled = false;
+                        this.textContent = 'Generate 100 More BINs';
+                        
+                        // Show error message
+                        alert(`Error generating BINs: ${data.message || 'Unknown error'}`);
+                        document.getElementById('table-spinner').style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error generating BINs:', error);
+                    
+                    // Enable button
+                    this.disabled = false;
+                    this.textContent = 'Generate 100 More BINs';
+                    
+                    // Show error message
+                    alert('Error generating BINs. Please try again.');
+                    document.getElementById('table-spinner').style.display = 'none';
+                });
+        });
+        
+        // Function to update charts with new data
+        function updateCharts(data) {
+            // Update Exploit Types chart
+            const exploitLabels = Object.keys(data.exploit_types);
+            const exploitValues = Object.values(data.exploit_types);
+            
+            exploitTypesChart.data.labels = exploitLabels;
+            exploitTypesChart.data.datasets[0].data = exploitValues;
+            exploitTypesChart.update();
+            
+            // Update 3DS Support chart
+            const threedsLabels = Object.keys(data['3ds_support']);
+            const threedsValues = Object.values(data['3ds_support']);
+            
+            threedsChart.data.labels = threedsLabels;
+            threedsChart.data.datasets[0].data = threedsValues;
+            threedsChart.update();
+            
+            // Update Brands chart
+            const brandLabels = Object.keys(data.brands);
+            const brandValues = Object.values(data.brands);
+            
+            brandsChart.data.labels = brandLabels;
+            brandsChart.data.datasets[0].data = brandValues;
+            brandsChart.update();
+            
+            // Update Countries chart
+            const countryLabels = Object.keys(data.countries);
+            const countryValues = Object.values(data.countries);
+            
+            countriesChart.data.labels = countryLabels;
+            countriesChart.data.datasets[0].data = countryValues;
+            countriesChart.update();
+        }
 
         // Refresh data
         document.getElementById('refresh-data').addEventListener('click', function(e) {
