@@ -464,9 +464,10 @@
                             <td>${bin.threeDS2supported ? '✓' : '✗'}</td>
                             <td>${bin.is_verified ? '<span class="badge bg-success">Verified</span>' : '<span class="badge bg-secondary">Not Verified</span>'}</td>
                             <td>
-                                <button class="btn btn-sm btn-primary verify-bin-btn" data-bin="${bin.BIN}">
-                                    Verify with Neutrino
+                                <button class="btn btn-sm btn-primary verify-bin-btn" data-bin="${bin.BIN}" title="Verify this BIN with Neutrino API to get real-world issuer, card type, and country information">
+                                    <i class="bi bi-shield-check"></i> Verify BIN
                                 </button>
+                                ${bin.is_verified ? `<small class="d-block text-muted mt-1">Source: ${bin.data_source}</small>` : ''}
                             </td>
                         `;
                         tableBody.appendChild(row);
@@ -689,8 +690,14 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.status === 'success') {
-                            // Show success message
-                            alert(`BIN ${binCode} verified successfully.`);
+                            // Show detailed success message
+                            const binData = data.data;
+                            alert(`BIN ${binCode} verified successfully with Neutrino API.\n\n` +
+                                  `Card Type: ${binData.type}\n` + 
+                                  `Brand: ${binData.brand}\n` +
+                                  `Issuer: ${binData.issuer}\n` + 
+                                  `Country: ${binData.country}\n` +
+                                  `3DS Support: ${binData.threeDS1Supported || binData.threeDS2supported ? 'Yes' : 'No'}`);
                             
                             // Reload current page of BIN data to show updated verification status
                             loadBINData(currentPage);
