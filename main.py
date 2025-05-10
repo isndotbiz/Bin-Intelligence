@@ -395,14 +395,39 @@ def get_database_statistics():
 
 @app.route('/api/bins')
 def api_bins():
-    """API endpoint to get BIN data"""
+    """API endpoint to get BIN data with optional pagination"""
     try:
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 200, type=int)  # Default to 200 BINs per page
+        
         # First try to get BINs from database
         bins_data = get_bins_from_database()
         if not bins_data:
             # If no data in database, fallback to file
             bins_data = load_bin_data()
-        return jsonify(bins_data)
+        
+        # Calculate total pages
+        total_bins = len(bins_data)
+        total_pages = (total_bins + per_page - 1) // per_page  # Ceiling division
+        
+        # Apply pagination
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_bins = bins_data[start_idx:end_idx]
+        
+        # Prepare response with pagination metadata
+        response = {
+            'bins': paginated_bins,
+            'pagination': {
+                'total_bins': total_bins,
+                'total_pages': total_pages,
+                'current_page': page,
+                'per_page': per_page
+            }
+        }
+        
+        return jsonify(response)
     except Exception as e:
         logger.error(f"Error in api_bins: {str(e)}")
         return jsonify({"error": str(e)}), 500
@@ -465,6 +490,83 @@ def api_exploits():
         return jsonify(exploit_data)
     except Exception as e:
         logger.error(f"Error in api_exploits: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/generate-bins')
+def generate_more_bins():
+    """Generate additional BINs and save them to the database"""
+    try:
+        # Count existing BINs in the database
+        existing_bins_count = db_session.query(func.count(BIN.id)).scalar() or 0
+        logger.info(f"Currently have {existing_bins_count} BINs in the database")
+        
+        # Generate additional BINs (100 more)
+        count = int(request.args.get('count', 100))
+        fraud_feed = FraudFeedScraper()
+        
+        # Get all existing BINs to avoid duplicates
+        existing_bins = set(bin_record.bin_code for bin_record in db_session.query(BIN.bin_code).all())
+        
+        # Generate new unique BINs
+        logger.info(f"Generating {count} new unique BINs")
+        new_exploited_bins = []
+        attempts = 0
+        max_attempts = count * 10  # Limit the number of attempts to avoid infinite loops
+        
+        while len(new_exploited_bins) < count and attempts < max_attempts:
+            attempts += 1
+            bin_batch = fraud_feed._generate_sample_data(count=100)
+            for bin_code, exploit_type in bin_batch:
+                if bin_code not in existing_bins and not any(b[0] == bin_code for b in new_exploited_bins):
+                    new_exploited_bins.append((bin_code, exploit_type))
+                    if len(new_exploited_bins) >= count:
+                        break
+        
+        if not new_exploited_bins:
+            return jsonify({'status': 'error', 'message': 'Could not generate unique BINs'}), 400
+            
+        # Process and enrich the new BINs
+        bin_enricher = BinEnricher()
+        enriched_bins = []
+        
+        for bin_code, exploit_type in new_exploited_bins:
+            enriched_data = bin_enricher.enrich_bin(bin_code)
+            if enriched_data:
+                enriched_data["exploit_type"] = exploit_type
+                enriched_bins.append(enriched_data)
+                
+        if not enriched_bins:
+            return jsonify({'status': 'error', 'message': 'Could not enrich BINs'}), 400
+            
+        # Save the new BINs to the database
+        created, updated = save_bins_to_database(enriched_bins)
+        
+        # Also append to the JSON file for fallback purposes
+        try:
+            with open('exploited_bins.json', 'r') as f:
+                existing_data = json.load(f)
+                
+            # Append new BINs
+            existing_data.extend(enriched_bins)
+            
+            # Write back to JSON
+            with open('exploited_bins.json', 'w') as f:
+                json.dump(existing_data, f, indent=2)
+            
+            # Update CSV file as well
+            write_csv(existing_data, 'exploited_bins.csv')
+            
+        except Exception as e:
+            logger.error(f"Error updating JSON file: {str(e)}")
+            
+        return jsonify({
+            'status': 'success', 
+            'new_bins': len(enriched_bins),
+            'total_bins': existing_bins_count + created
+        })
+        
+    except Exception as e:
+        logger.error(f"Error generating BINs: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/refresh')
