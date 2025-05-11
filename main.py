@@ -676,8 +676,8 @@ def api_blocklist():
     4. Verification status (verified BINs get higher priority as they're confirmed)
     """
     try:
-        # Use the Flask-SQLAlchemy session instead of a dedicated one for better connection pooling
-        session = db.session
+        # Create a fresh session for this request - using scoped_session for thread safety
+        session = db_session()
         
         limit = request.args.get('limit', default=100, type=int)
         output_format = request.args.get('format', default='json', type=str).lower()
@@ -685,20 +685,23 @@ def api_blocklist():
         country_filter = request.args.get('country', default=None, type=str)
         transaction_country_filter = request.args.get('transaction_country', default=None, type=str)
         
-        # Base query for BINs using Flask-SQLAlchemy session
-        query = BIN.query
+        # Use the existing scoped session to get a fresh session for this request
+        session = db_session()
+        
+        # Base query for BINs
+        query = session.query(BIN)
         
         # Filter out patched BINs unless specifically included
         if not include_patched:
-            query = query.filter_by(patch_status='Exploitable')
+            query = query.filter(BIN.patch_status == 'Exploitable')
             
         # Apply country filter if provided
         if country_filter:
-            query = query.filter_by(country=country_filter.upper())
+            query = query.filter(BIN.country == country_filter.upper())
             
         # Apply transaction country filter if provided
         if transaction_country_filter:
-            query = query.filter_by(transaction_country=transaction_country_filter.upper())
+            query = query.filter(BIN.transaction_country == transaction_country_filter.upper())
         
         # Get all BINs that match our criteria
         bins = query.all()
