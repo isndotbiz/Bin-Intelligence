@@ -675,71 +675,9 @@ def api_blocklist():
     3. 3DS support (BINs without 3DS are higher risk)
     4. Verification status (verified BINs get higher priority as they're confirmed)
     """
-    try:
-        from db_handler import get_blocklist_bins
-        
-        limit = request.args.get('limit', default=100, type=int)
-        output_format = request.args.get('format', default='json', type=str).lower()
-        include_patched = request.args.get('include_patched', default='false', type=str).lower() == 'true'
-        country_filter = request.args.get('country', default=None, type=str)
-        transaction_country_filter = request.args.get('transaction_country', default=None, type=str)
-        
-        # Get BINs using the new stable database handler
-        scored_bins = get_blocklist_bins(
-            limit=limit, 
-            include_patched=include_patched,
-            country_filter=country_filter,
-            transaction_country_filter=transaction_country_filter
-        )
-        
-        # BINs are already processed, scored and sorted by the database handler
-        # No additional processing needed here
-        
-        # Return in requested format
-        if output_format == 'csv':
-            # Generate CSV data
-            import csv
-            from io import StringIO
-            
-            output = StringIO()
-            fieldnames = ['bin_code', 'risk_score', 'issuer', 'brand', 'country', 'state', 
-                          'card_type', 'is_verified', 'threeds_supported', 'patch_status', 
-                          'exploit_types', 'transaction_country']
-            
-            writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction='ignore')
-            writer.writeheader()
-            
-            for bin_data in scored_bins:
-                # Convert exploit_types list to string for CSV
-                bin_data_copy = bin_data.copy()
-                bin_data_copy['exploit_types'] = ', '.join(bin_data_copy['exploit_types'])
-                writer.writerow(bin_data_copy)
-            
-            # Create response with CSV data
-            from flask import Response
-            response = Response(output.getvalue(), mimetype='text/csv')
-            response.headers["Content-Disposition"] = f"attachment; filename=bin_blocklist_{datetime.now().strftime('%Y%m%d')}.csv"
-            return response
-        else:
-            # Default to JSON
-            return jsonify({
-                'count': len(scored_bins),
-                'bins': scored_bins
-            })
-    except Exception as e:
-        logger.error(f"Error in api_blocklist: {str(e)}")
-        # Make sure to rollback the transaction on error
-        try:
-            session.rollback()
-        except:
-            pass
-        return jsonify({"error": str(e)}), 500
-    finally:
-        # Always close the session to prevent connection leaks
-        try:
-            session.close()
-        except:
-            pass
+    # Use the enhanced implementation for better database stability
+    from api_blocklist import handle_blocklist_request
+    return handle_blocklist_request(app)
 
 @app.route('/verify-bin/<bin_code>')
 def verify_bin(bin_code):
