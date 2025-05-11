@@ -676,8 +676,7 @@ def api_blocklist():
     4. Verification status (verified BINs get higher priority as they're confirmed)
     """
     try:
-        # Create a fresh session for this request - using scoped_session for thread safety
-        session = db_session()
+        from db_handler import get_blocklist_bins
         
         limit = request.args.get('limit', default=100, type=int)
         output_format = request.args.get('format', default='json', type=str).lower()
@@ -685,104 +684,16 @@ def api_blocklist():
         country_filter = request.args.get('country', default=None, type=str)
         transaction_country_filter = request.args.get('transaction_country', default=None, type=str)
         
-        # Use the existing scoped session to get a fresh session for this request
-        session = db_session()
+        # Get BINs using the new stable database handler
+        scored_bins = get_blocklist_bins(
+            limit=limit, 
+            include_patched=include_patched,
+            country_filter=country_filter,
+            transaction_country_filter=transaction_country_filter
+        )
         
-        # Base query for BINs
-        query = session.query(BIN)
-        
-        # Filter out patched BINs unless specifically included
-        if not include_patched:
-            query = query.filter(BIN.patch_status == 'Exploitable')
-            
-        # Apply country filter if provided
-        if country_filter:
-            query = query.filter(BIN.country == country_filter.upper())
-            
-        # Apply transaction country filter if provided
-        if transaction_country_filter:
-            query = query.filter(BIN.transaction_country == transaction_country_filter.upper())
-        
-        # Get all BINs that match our criteria
-        bins = query.all()
-        
-        # Calculate risk score for each BIN
-        scored_bins = []
-        for bin_obj in bins:
-            # Start with base score of 0
-            risk_score = 0
-            
-            # Factor 1: Patch status (0-50 points) - safe attribute access
-            patch_status = getattr(bin_obj, 'patch_status', None)
-            if patch_status == 'Exploitable':
-                risk_score += 50
-            
-            # Factor 2: Cross-border fraud (0-30 points)
-            # Check if any of the bin's exploits are cross-border
-            cross_border_exploits = session.query(BINExploit)\
-                .join(ExploitType)\
-                .filter(BINExploit.bin_id == bin_obj.id)\
-                .filter(ExploitType.name == 'cross-border')\
-                .all()
-            
-            # Use proper null checks for attribute access with SQLAlchemy
-            has_cross_border = len(cross_border_exploits) > 0
-            
-            # Get attribute values safely
-            transaction_country = getattr(bin_obj, 'transaction_country', None)
-            country = getattr(bin_obj, 'country', None)
-            
-            has_transaction_country = transaction_country is not None and transaction_country != ''
-            has_country = country is not None and country != ''
-            countries_different = has_transaction_country and has_country and transaction_country != country
-            
-            if has_cross_border or countries_different:
-                risk_score += 30
-            
-            # Factor 3: 3DS Support (0-15 points)
-            has_3ds1 = bin_obj.threeds1_supported is True
-            has_3ds2 = bin_obj.threeds2_supported is True
-            if not has_3ds1 and not has_3ds2:
-                risk_score += 15
-            
-            # Factor 4: Verification status (0-5 points)
-            if bin_obj.is_verified is True:
-                risk_score += 5
-            
-            # Get exploit types using the proper method
-            exploit_types = []
-            if bin_obj.exploits:
-                for e in bin_obj.exploits:
-                    if e.exploit_type and e.exploit_type.name:
-                        exploit_types.append(e.exploit_type.name)
-            
-            # Add to scored bins list with proper null checks - using getattr for safe access
-            bin_data = {
-                'bin_code': getattr(bin_obj, 'bin_code', ''),
-                'issuer': getattr(bin_obj, 'issuer', '') or 'Unknown',
-                'brand': getattr(bin_obj, 'brand', '') or 'Unknown',
-                'country': country or 'Unknown',
-                'card_type': getattr(bin_obj, 'card_type', '') or 'Unknown',
-                'is_verified': getattr(bin_obj, 'is_verified', False) is True,
-                'threeds_supported': has_3ds1 or has_3ds2,
-                'risk_score': risk_score,
-                'patch_status': getattr(bin_obj, 'patch_status', '') or 'Unknown',
-                'exploit_types': exploit_types,
-                'transaction_country': transaction_country
-            }
-            
-            # Add state information for US cards
-            state = getattr(bin_obj, 'state', None)
-            if country == 'US' and state:
-                bin_data['state'] = state
-            
-            scored_bins.append(bin_data)
-        
-        # Sort by risk score (highest first)
-        scored_bins = sorted(scored_bins, key=lambda x: x['risk_score'], reverse=True)
-        
-        # Limit to requested number
-        scored_bins = scored_bins[:limit]
+        # BINs are already processed, scored and sorted by the database handler
+        # No additional processing needed here
         
         # Return in requested format
         if output_format == 'csv':
