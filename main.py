@@ -567,102 +567,42 @@ def api_cross_border_stats():
         logger.info(f"Successfully retrieved cross-border stats for {transaction_country}")
         
         return jsonify(stats)
-        
-        # Apply the filters
-        query = query.filter(transaction_filter)
-        query = query.filter(different_country_filter)
-        query = query.filter(not_null_filter)
-        
-        # Execute the query
-        cross_border_bins = query.all()
-            
-        # Count BINs by country of origin
-        country_counts = {}
-        for bin_obj in cross_border_bins:
-            if bin_obj.country not in country_counts:
-                country_counts[bin_obj.country] = 0
-            country_counts[bin_obj.country] += 1
-        
-        # Sort countries by count (descending)
-        sorted_countries = sorted(country_counts.items(), key=lambda x: x[1], reverse=True)
-        
-        # Get the top N countries
-        top_countries = sorted_countries[:limit]
-        
-        # Prepare result
-        result = {
-            'transaction_country': transaction_country,
-            'total_cross_border_bins': len(cross_border_bins),
-            'top_countries': [
-                {'country': country, 'count': count, 'percentage': round(count / len(cross_border_bins) * 100, 2) if len(cross_border_bins) > 0 else 0}
-                for country, count in top_countries
-            ]
-        }
-        
-        return jsonify(result)
     except Exception as e:
         logger.error(f"Error in api_cross_border_stats: {str(e)}")
-        # Make sure to roll back any transactions
-        try:
-            session.rollback()
-        except:
-            pass
+        import traceback
+        logger.error(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
-    finally:
-        # Always close the session
-        try:
-            session.close()
-        except:
-            pass
-        # Clean up the engine
-        try:
-            engine_local.dispose()
-        except:
-            pass
 
 @app.route('/api/scan-history')
 def api_scan_history():
     """API endpoint to get scan history"""
     try:
-        # Get scan history records
-        scan_records = db_session.query(ScanHistory).order_by(ScanHistory.scan_date.desc()).limit(10).all()
-        
-        # Convert to list of dictionaries
-        history_data = []
-        for record in scan_records:
-            history_data.append({
-                'id': record.id,
-                'scan_date': record.scan_date.isoformat(),
-                'source': record.source,
-                'bins_found': record.bins_found,
-                'bins_classified': record.bins_classified,
-                'scan_parameters': record.scan_parameters
-            })
+        # Use our improved dashboard handler to get scan history
+        from dashboard_handler import get_scan_history
+        history_data = get_scan_history()
+        logger.info(f"Successfully retrieved {len(history_data)} scan history records")
         
         return jsonify(history_data)
     except Exception as e:
         logger.error(f"Error in api_scan_history: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/exploits')
 def api_exploits():
     """API endpoint to get exploit types"""
     try:
-        # Get all exploit types
-        exploit_types = db_session.query(ExploitType).all()
-        
-        # Convert to list of dictionaries
-        exploit_data = []
-        for et in exploit_types:
-            exploit_data.append({
-                'id': et.id,
-                'name': et.name,
-                'description': et.description
-            })
+        # Use our improved dashboard handler to get exploit types
+        from dashboard_handler import get_exploit_types
+        exploit_data = get_exploit_types()
+        logger.info(f"Successfully retrieved {len(exploit_data)} exploit types")
         
         return jsonify(exploit_data)
     except Exception as e:
         logger.error(f"Error in api_exploits: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
         
         
