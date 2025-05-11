@@ -214,29 +214,187 @@
                         <div class="alert alert-danger">
                             <strong><i class="bi bi-exclamation-triangle-fill"></i> High Risk BINs</strong>: These BINs have been identified as high-risk based on our analysis of exploit patterns, cross-border fraud, and 3DS support. Consider blocking these BINs on your payment site to reduce fraud exposure.
                         </div>
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>BIN</th>
-                                        <th>Risk Score</th>
-                                        <th>Brand</th>
-                                        <th>Issuer</th>
-                                        <th>Country</th>
-                                        <th>Type</th>
-                                        <th>Exploit Types</th>
-                                        <th>3DS</th>
-                                        <th>Patch Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="blocklist-table-body">
-                                    <!-- Blocklist data will be loaded here -->
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="loading-spinner" id="blocklist-spinner">
-                            <div class="spinner-border text-danger" role="status">
-                                <span class="visually-hidden">Loading blocklist...</span>
+                        
+                        <!-- Country Tabs -->
+                        <ul class="nav nav-tabs mb-3" id="country-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="all-bins-tab" data-bs-toggle="tab" data-bs-target="#all-bins-content" type="button" role="tab" aria-controls="all-bins-content" aria-selected="true">
+                                    All BINs
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="us-bins-tab" data-bs-toggle="tab" data-bs-target="#us-bins-content" type="button" role="tab" aria-controls="us-bins-content" aria-selected="false">
+                                    US Cards
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="international-tab" data-bs-toggle="tab" data-bs-target="#international-content" type="button" role="tab" aria-controls="international-content" aria-selected="false">
+                                    International Cards
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="cross-border-tab" data-bs-toggle="tab" data-bs-target="#cross-border-content" type="button" role="tab" aria-controls="cross-border-content" aria-selected="false">
+                                    Cross-Border Fraud
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <!-- Tab Content -->
+                        <div class="tab-content" id="country-tabs-content">
+                            <!-- All BINs Tab -->
+                            <div class="tab-pane fade show active" id="all-bins-content" role="tabpanel" aria-labelledby="all-bins-tab">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>BIN</th>
+                                                <th>Risk Score</th>
+                                                <th>Brand</th>
+                                                <th>Issuer</th>
+                                                <th>Country</th>
+                                                <th>Type</th>
+                                                <th>Exploit Types</th>
+                                                <th>3DS</th>
+                                                <th>Patch Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="blocklist-table-body">
+                                            <!-- Blocklist data will be loaded here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="loading-spinner" id="blocklist-spinner">
+                                    <div class="spinner-border text-danger" role="status">
+                                        <span class="visually-hidden">Loading blocklist...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- US Cards Tab -->
+                            <div class="tab-pane fade" id="us-bins-content" role="tabpanel" aria-labelledby="us-bins-tab">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>BIN</th>
+                                                <th>Risk Score</th>
+                                                <th>Brand</th>
+                                                <th>Issuer</th>
+                                                <th>Type</th>
+                                                <th>Exploit Types</th>
+                                                <th>3DS</th>
+                                                <th>Patch Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="us-bins-table-body">
+                                            <!-- US BINs data will be loaded here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="loading-spinner" id="us-bins-spinner">
+                                    <div class="spinner-border text-danger" role="status">
+                                        <span class="visually-hidden">Loading US BINs...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- International Cards Tab -->
+                            <div class="tab-pane fade" id="international-content" role="tabpanel" aria-labelledby="international-tab">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>BIN</th>
+                                                <th>Risk Score</th>
+                                                <th>Brand</th>
+                                                <th>Issuer</th>
+                                                <th>Country</th>
+                                                <th>Type</th>
+                                                <th>Exploit Types</th>
+                                                <th>3DS</th>
+                                                <th>Patch Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="international-table-body">
+                                            <!-- International BINs data will be loaded here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="loading-spinner" id="international-spinner">
+                                    <div class="spinner-border text-danger" role="status">
+                                        <span class="visually-hidden">Loading international BINs...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Cross-Border Fraud Tab -->
+                            <div class="tab-pane fade" id="cross-border-content" role="tabpanel" aria-labelledby="cross-border-tab">
+                                <div class="row mb-4">
+                                    <div class="col-md-6">
+                                        <div class="card bg-dark border-danger">
+                                            <div class="card-header text-white bg-danger">
+                                                <h5 class="mb-0">Top 5 Countries with Cards Exploited in the US</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="cross-border-chart" style="height: 300px;"></div>
+                                                <div class="loading-spinner" id="cross-border-spinner">
+                                                    <div class="spinner-border text-danger" role="status">
+                                                        <span class="visually-hidden">Loading cross-border data...</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card bg-dark">
+                                            <div class="card-header">
+                                                <h5 class="mb-0">Cross-Border Fraud Statistics</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <h2 class="display-4 mb-3" id="total-cross-border-stat">...</h2>
+                                                <p class="lead">Total Cross-Border Transactions in the US</p>
+                                                <table class="table table-sm table-dark">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Country</th>
+                                                            <th>Cards</th>
+                                                            <th>Percentage</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="cross-border-stats-table">
+                                                        <!-- Cross-border stats will be loaded here -->
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="table-responsive mt-3">
+                                    <h5>Cards from Other Countries Used in the US</h5>
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>BIN</th>
+                                                <th>Risk Score</th>
+                                                <th>Brand</th>
+                                                <th>Issuer</th>
+                                                <th>Origin Country</th>
+                                                <th>Type</th>
+                                                <th>Exploit Types</th>
+                                                <th>3DS</th>
+                                                <th>Patch Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="cross-border-table-body">
+                                            <!-- Cross-border BINs data will be loaded here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="loading-spinner" id="cross-border-bins-spinner">
+                                    <div class="spinner-border text-danger" role="status">
+                                        <span class="visually-hidden">Loading cross-border BINs...</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -952,12 +1110,348 @@
                 });
         }
         
-        // Load the blocklist when page loads
+        // Function to load US BINs
+        function loadUSBins(limit = 25) {
+            // Show loading spinner
+            document.getElementById('us-bins-spinner').style.display = 'flex';
+            
+            // Clear any existing data
+            document.getElementById('us-bins-table-body').innerHTML = '';
+            
+            // Fetch the blocklist from API with US country filter
+            fetch(`/api/blocklist?limit=${limit}&country=US`)
+                .then(response => response.json())
+                .then(data => {
+                    // Hide loading spinner
+                    document.getElementById('us-bins-spinner').style.display = 'none';
+                    
+                    // Get the table body
+                    const tableBody = document.getElementById('us-bins-table-body');
+                    
+                    // If no data, show message
+                    if (!data.bins || data.bins.length === 0) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td colspan="8" class="text-center">No US high-risk BINs found.</td>`;
+                        tableBody.appendChild(row);
+                        return;
+                    }
+                    
+                    // For each BIN, create a table row
+                    data.bins.forEach(bin => {
+                        const row = document.createElement('tr');
+                        
+                        // Highlight based on risk score
+                        if (bin.risk_score >= 90) {
+                            row.classList.add('table-danger');
+                        } else if (bin.risk_score >= 70) {
+                            row.classList.add('table-warning');
+                        }
+                        
+                        // Format exploit types as badges
+                        const exploitBadges = bin.exploit_types.map(type => 
+                            `<span class="badge bg-danger me-1">${type}</span>`
+                        ).join(' ');
+                        
+                        row.innerHTML = `
+                            <td><strong>${bin.bin_code}</strong></td>
+                            <td><span class="badge ${bin.risk_score >= 90 ? 'bg-danger' : (bin.risk_score >= 70 ? 'bg-warning text-dark' : 'bg-info text-dark')}">${bin.risk_score}</span></td>
+                            <td>${bin.brand}</td>
+                            <td>${bin.issuer}</td>
+                            <td>${bin.card_type}</td>
+                            <td>${exploitBadges || '<span class="badge bg-secondary">None</span>'}</td>
+                            <td>${bin.threeds_supported ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-danger">No</span>'}</td>
+                            <td><span class="badge ${bin.patch_status === 'Exploitable' ? 'bg-danger' : 'bg-success'}">${bin.patch_status}</span></td>
+                        `;
+                        
+                        tableBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading US BINs:', error);
+                    // Hide loading spinner
+                    document.getElementById('us-bins-spinner').style.display = 'none';
+                    
+                    // Show error message
+                    const tableBody = document.getElementById('us-bins-table-body');
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td colspan="8" class="text-center text-danger">Error loading US BINs. Please try refreshing the page.</td>`;
+                    tableBody.appendChild(row);
+                });
+        }
+        
+        // Function to load international BINs (non-US)
+        function loadInternationalBins(limit = 25) {
+            // Show loading spinner
+            document.getElementById('international-spinner').style.display = 'flex';
+            
+            // Clear any existing data
+            document.getElementById('international-table-body').innerHTML = '';
+            
+            // Fetch all bins and filter out US ones client-side
+            fetch(`/api/blocklist?limit=${limit}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Hide loading spinner
+                    document.getElementById('international-spinner').style.display = 'none';
+                    
+                    // Get the table body
+                    const tableBody = document.getElementById('international-table-body');
+                    
+                    // Filter out US BINs
+                    const internationalBins = data.bins.filter(bin => bin.country && bin.country !== 'US');
+                    
+                    // If no data, show message
+                    if (!internationalBins || internationalBins.length === 0) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td colspan="9" class="text-center">No international high-risk BINs found.</td>`;
+                        tableBody.appendChild(row);
+                        return;
+                    }
+                    
+                    // For each BIN, create a table row
+                    internationalBins.forEach(bin => {
+                        const row = document.createElement('tr');
+                        
+                        // Highlight based on risk score
+                        if (bin.risk_score >= 90) {
+                            row.classList.add('table-danger');
+                        } else if (bin.risk_score >= 70) {
+                            row.classList.add('table-warning');
+                        }
+                        
+                        // Format exploit types as badges
+                        const exploitBadges = bin.exploit_types.map(type => 
+                            `<span class="badge bg-danger me-1">${type}</span>`
+                        ).join(' ');
+                        
+                        row.innerHTML = `
+                            <td><strong>${bin.bin_code}</strong></td>
+                            <td><span class="badge ${bin.risk_score >= 90 ? 'bg-danger' : (bin.risk_score >= 70 ? 'bg-warning text-dark' : 'bg-info text-dark')}">${bin.risk_score}</span></td>
+                            <td>${bin.brand}</td>
+                            <td>${bin.issuer}</td>
+                            <td>${bin.country}</td>
+                            <td>${bin.card_type}</td>
+                            <td>${exploitBadges || '<span class="badge bg-secondary">None</span>'}</td>
+                            <td>${bin.threeds_supported ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-danger">No</span>'}</td>
+                            <td><span class="badge ${bin.patch_status === 'Exploitable' ? 'bg-danger' : 'bg-success'}">${bin.patch_status}</span></td>
+                        `;
+                        
+                        tableBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading international BINs:', error);
+                    // Hide loading spinner
+                    document.getElementById('international-spinner').style.display = 'none';
+                    
+                    // Show error message
+                    const tableBody = document.getElementById('international-table-body');
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td colspan="9" class="text-center text-danger">Error loading international BINs. Please try refreshing the page.</td>`;
+                    tableBody.appendChild(row);
+                });
+        }
+        
+        // Function to load cross-border fraud data
+        function loadCrossBorderFraud() {
+            // Show loading spinners
+            document.getElementById('cross-border-spinner').style.display = 'flex';
+            document.getElementById('cross-border-bins-spinner').style.display = 'flex';
+            
+            // Clear any existing data
+            document.getElementById('cross-border-stats-table').innerHTML = '';
+            document.getElementById('cross-border-table-body').innerHTML = '';
+            
+            // Fetch cross-border stats
+            fetch('/api/cross-border-stats?transaction_country=US&limit=5')
+                .then(response => response.json())
+                .then(data => {
+                    // Hide loading spinner
+                    document.getElementById('cross-border-spinner').style.display = 'none';
+                    
+                    // Update total cross-border transactions
+                    document.getElementById('total-cross-border-stat').textContent = data.total_cross_border_bins;
+                    
+                    // Get the table body for stats
+                    const statsTableBody = document.getElementById('cross-border-stats-table');
+                    
+                    // If no data, show message
+                    if (!data.top_countries || data.top_countries.length === 0) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td colspan="3" class="text-center">No cross-border fraud detected.</td>`;
+                        statsTableBody.appendChild(row);
+                    } else {
+                        // For each country, create a stats row
+                        data.top_countries.forEach(country => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${country.country}</td>
+                                <td>${country.count}</td>
+                                <td>${country.percentage}%</td>
+                            `;
+                            statsTableBody.appendChild(row);
+                        });
+                        
+                        // Create chart
+                        createCrossBorderChart(data.top_countries);
+                    }
+                    
+                    // Now load the cross-border BINs
+                    return fetch(`/api/blocklist?transaction_country=US&limit=50`);
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Hide loading spinner
+                    document.getElementById('cross-border-bins-spinner').style.display = 'none';
+                    
+                    // Get the table body
+                    const tableBody = document.getElementById('cross-border-table-body');
+                    
+                    // Filter only cross-border BINs (transaction country US, but card from elsewhere)
+                    const crossBorderBins = data.bins.filter(bin => bin.country && bin.country !== 'US');
+                    
+                    // If no data, show message
+                    if (!crossBorderBins || crossBorderBins.length === 0) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td colspan="9" class="text-center">No cross-border BINs found.</td>`;
+                        tableBody.appendChild(row);
+                        return;
+                    }
+                    
+                    // For each BIN, create a table row
+                    crossBorderBins.forEach(bin => {
+                        const row = document.createElement('tr');
+                        
+                        // Highlight based on risk score
+                        if (bin.risk_score >= 90) {
+                            row.classList.add('table-danger');
+                        } else if (bin.risk_score >= 70) {
+                            row.classList.add('table-warning');
+                        }
+                        
+                        // Format exploit types as badges
+                        const exploitBadges = bin.exploit_types.map(type => 
+                            `<span class="badge bg-danger me-1">${type}</span>`
+                        ).join(' ');
+                        
+                        row.innerHTML = `
+                            <td><strong>${bin.bin_code}</strong></td>
+                            <td><span class="badge ${bin.risk_score >= 90 ? 'bg-danger' : (bin.risk_score >= 70 ? 'bg-warning text-dark' : 'bg-info text-dark')}">${bin.risk_score}</span></td>
+                            <td>${bin.brand}</td>
+                            <td>${bin.issuer}</td>
+                            <td>${bin.country}</td>
+                            <td>${bin.card_type}</td>
+                            <td>${exploitBadges || '<span class="badge bg-secondary">None</span>'}</td>
+                            <td>${bin.threeds_supported ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-danger">No</span>'}</td>
+                            <td><span class="badge ${bin.patch_status === 'Exploitable' ? 'bg-danger' : 'bg-success'}">${bin.patch_status}</span></td>
+                        `;
+                        
+                        tableBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading cross-border data:', error);
+                    // Hide loading spinners
+                    document.getElementById('cross-border-spinner').style.display = 'none';
+                    document.getElementById('cross-border-bins-spinner').style.display = 'none';
+                    
+                    // Show error message
+                    document.getElementById('total-cross-border-stat').textContent = 'Error';
+                    
+                    const statsTableBody = document.getElementById('cross-border-stats-table');
+                    const statsRow = document.createElement('tr');
+                    statsRow.innerHTML = `<td colspan="3" class="text-center text-danger">Error loading statistics.</td>`;
+                    statsTableBody.appendChild(statsRow);
+                    
+                    const tableBody = document.getElementById('cross-border-table-body');
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td colspan="9" class="text-center text-danger">Error loading cross-border BINs. Please try refreshing the page.</td>`;
+                    tableBody.appendChild(row);
+                });
+        }
+        
+        // Function to create cross-border chart
+        function createCrossBorderChart(countriesData) {
+            const ctx = document.getElementById('cross-border-chart').getContext('2d');
+            
+            // Extract labels and data
+            const labels = countriesData.map(c => c.country);
+            const counts = countriesData.map(c => c.count);
+            
+            // Generate colors
+            const colors = [
+                'rgba(255, 99, 132, 0.8)',
+                'rgba(255, 159, 64, 0.8)',
+                'rgba(255, 205, 86, 0.8)',
+                'rgba(75, 192, 192, 0.8)',
+                'rgba(54, 162, 235, 0.8)'
+            ];
+            
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: counts,
+                        backgroundColor: colors,
+                        borderColor: 'rgba(255, 255, 255, 0.5)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: 'rgba(255, 255, 255, 0.8)'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Cards from Other Countries Used in US',
+                            color: 'rgba(255, 255, 255, 0.8)',
+                            font: {
+                                size: 14
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Load the all BINs tab when page loads
         loadBlocklist();
+        
+        // Add tab change event listeners
+        document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(tab => {
+            tab.addEventListener('shown.bs.tab', event => {
+                const targetId = event.target.getAttribute('id');
+                
+                if (targetId === 'us-bins-tab') {
+                    loadUSBins();
+                } else if (targetId === 'international-tab') {
+                    loadInternationalBins();
+                } else if (targetId === 'cross-border-tab') {
+                    loadCrossBorderFraud();
+                }
+            });
+        });
         
         // Add event listener for refresh blocklist button
         document.getElementById('refresh-blocklist').addEventListener('click', function() {
-            loadBlocklist();
+            const activeTab = document.querySelector('.nav-link.active').getAttribute('id');
+            
+            if (activeTab === 'all-bins-tab') {
+                loadBlocklist();
+            } else if (activeTab === 'us-bins-tab') {
+                loadUSBins();
+            } else if (activeTab === 'international-tab') {
+                loadInternationalBins();
+            } else if (activeTab === 'cross-border-tab') {
+                loadCrossBorderFraud();
+            }
         });
     </script>
 </body>

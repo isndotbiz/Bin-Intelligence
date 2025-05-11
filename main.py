@@ -525,6 +525,69 @@ def api_stats():
     except Exception as e:
         logger.error(f"Error in api_stats: {str(e)}")
         return jsonify({"error": str(e)}), 500
+        
+@app.route('/api/cross-border-stats')
+def api_cross_border_stats():
+    """
+    API endpoint to get statistics on cross-border fraud
+    Shows the top countries with cards exploited in a specific transaction country
+    
+    Query parameters:
+    - transaction_country: The country where exploited cards are being used (default: 'US')
+    - limit: Number of countries to return (default: 5)
+    """
+    from sqlalchemy.orm import Session
+    session = Session(engine)
+    
+    try:
+        transaction_country = request.args.get('transaction_country', default='US', type=str).upper()
+        limit = request.args.get('limit', default=5, type=int)
+        
+        # Get BINs with the specified transaction country
+        cross_border_bins = session.query(BIN)\
+            .filter(BIN.transaction_country == transaction_country)\
+            .filter(BIN.country != transaction_country)\
+            .filter(BIN.country != None)\
+            .all()
+            
+        # Count BINs by country of origin
+        country_counts = {}
+        for bin_obj in cross_border_bins:
+            if bin_obj.country not in country_counts:
+                country_counts[bin_obj.country] = 0
+            country_counts[bin_obj.country] += 1
+        
+        # Sort countries by count (descending)
+        sorted_countries = sorted(country_counts.items(), key=lambda x: x[1], reverse=True)
+        
+        # Get the top N countries
+        top_countries = sorted_countries[:limit]
+        
+        # Prepare result
+        result = {
+            'transaction_country': transaction_country,
+            'total_cross_border_bins': len(cross_border_bins),
+            'top_countries': [
+                {'country': country, 'count': count, 'percentage': round(count / len(cross_border_bins) * 100, 2) if len(cross_border_bins) > 0 else 0}
+                for country, count in top_countries
+            ]
+        }
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in api_cross_border_stats: {str(e)}")
+        # Make sure to roll back any transactions
+        try:
+            session.rollback()
+        except:
+            pass
+        return jsonify({"error": str(e)}), 500
+    finally:
+        # Always close the session
+        try:
+            session.close()
+        except:
+            pass
 
 @app.route('/api/scan-history')
 def api_scan_history():
@@ -582,6 +645,9 @@ def api_blocklist():
     - limit: Number of BINs to include (default: 100)
     - format: Output format ('json' or 'csv', default: 'json')
     - include_patched: Whether to include patched BINs (default: false)
+    - country: Filter by country code (e.g., 'US', 'GB')
+    - transaction_country: Filter by transaction country code 
+        (especially useful for finding cards from other countries used in the US)
     
     Risk factors considered:
     1. Patch status (exploitable gets highest priority)
@@ -597,6 +663,8 @@ def api_blocklist():
         limit = request.args.get('limit', default=100, type=int)
         output_format = request.args.get('format', default='json', type=str).lower()
         include_patched = request.args.get('include_patched', default='false', type=str).lower() == 'true'
+        country_filter = request.args.get('country', default=None, type=str)
+        transaction_country_filter = request.args.get('transaction_country', default=None, type=str)
         
         # Base query for BINs using the dedicated session
         query = session.query(BIN)
@@ -604,6 +672,14 @@ def api_blocklist():
         # Filter out patched BINs unless specifically included
         if not include_patched:
             query = query.filter(BIN.patch_status == 'Exploitable')
+            
+        # Apply country filter if provided
+        if country_filter:
+            query = query.filter(BIN.country == country_filter.upper())
+            
+        # Apply transaction country filter if provided
+        if transaction_country_filter:
+            query = query.filter(BIN.transaction_country == transaction_country_filter.upper())
         
         # Get all BINs that match our criteria
         bins = query.all()
