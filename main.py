@@ -521,29 +521,9 @@ def api_exploits():
         return jsonify({"error": str(e)}), 500
         
         
-@app.route('/api/blocklist')
-def api_blocklist():
-    """
-    API endpoint to get a ranked list of BINs to block.
-    Returns the top 100 BINs (by default) to block based on multiple risk factors.
-    
-    Query parameters:
-    - limit: Number of BINs to include (default: 100)
-    - format: Output format ('json' or 'csv', default: 'json')
-    - include_patched: Whether to include patched BINs (default: false)
-    - country: Filter by country code (e.g., 'US', 'GB')
-    - transaction_country: Filter by transaction country code 
-        (especially useful for finding cards from other countries used in the US)
-    
-    Risk factors considered:
-    1. Patch status (exploitable gets highest priority)
-    2. Cross-border transactions (higher priority as they indicate international fraud)
-    3. 3DS support (BINs without 3DS are higher risk)
-    4. Verification status (verified BINs get higher priority as they're confirmed)
-    """
-    # Use the enhanced implementation for better database stability
-    from api_blocklist import handle_blocklist_request
-    return handle_blocklist_request(app)
+# Import and register the blocklist API handler
+from api_blocklist import handle_blocklist_request
+handle_blocklist_request(app)
 
 @app.route('/verify-bin/<bin_code>')
 def verify_bin(bin_code):
