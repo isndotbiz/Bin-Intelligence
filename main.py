@@ -1058,6 +1058,36 @@ def refresh_data():
     bins_data = run_bin_intelligence_system(top_n=top_n, sample_pages=sample_pages)
     return jsonify({'status': 'success', 'bins_count': len(bins_data)})
 
+@app.route('/download-bin-database')
+def download_bin_database():
+    """Download the complete BIN database from Neutrino API"""
+    try:
+        # Only allow this endpoint to be called by authenticated users in production
+        
+        from bin_downloader import BINDownloader
+        
+        downloader = BINDownloader()
+        bin_count = downloader.download_and_process_bins()
+        
+        if bin_count > 0:
+            return jsonify({
+                "status": "success",
+                "message": f"Downloaded and processed {bin_count} BINs from Neutrino API",
+                "bins_count": bin_count
+            })
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "Failed to download BIN database. Check logs for details."
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Error downloading BIN database: {str(e)}")
+        return jsonify({
+            "status": "error", 
+            "message": f"Error: {str(e)}"
+        }), 500
+
 def main():
     """Main function to run the BIN Intelligence System"""
     # Set workflow detection based on port
