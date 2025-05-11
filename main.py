@@ -536,19 +536,34 @@ def api_cross_border_stats():
     - transaction_country: The country where exploited cards are being used (default: 'US')
     - limit: Number of countries to return (default: 5)
     """
-    from sqlalchemy.orm import Session
-    session = Session(engine)
+    # Create a dedicated session that's independent of other transactions
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    
+    # Create a new connection to the database
+    engine_local = create_engine(app.config["SQLALCHEMY_DATABASE_URI"])
+    Session = sessionmaker(bind=engine_local)
+    session = Session()
     
     try:
         transaction_country = request.args.get('transaction_country', default='US', type=str).upper()
         limit = request.args.get('limit', default=5, type=int)
         
-        # Get BINs with the specified transaction country
-        cross_border_bins = session.query(BIN)\
-            .filter(BIN.transaction_country == transaction_country)\
-            .filter(BIN.country != transaction_country)\
-            .filter(BIN.country != None)\
-            .all()
+        # Get BINs with the specified transaction country - filter using expressions not direct comparison
+        query = session.query(BIN)
+        
+        # Add filters one by one using SQLAlchemy expressions
+        transaction_filter = BIN.transaction_country == transaction_country
+        different_country_filter = BIN.country != transaction_country
+        not_null_filter = BIN.country.isnot(None)
+        
+        # Apply the filters
+        query = query.filter(transaction_filter)
+        query = query.filter(different_country_filter)
+        query = query.filter(not_null_filter)
+        
+        # Execute the query
+        cross_border_bins = query.all()
             
         # Count BINs by country of origin
         country_counts = {}
@@ -586,6 +601,11 @@ def api_cross_border_stats():
         # Always close the session
         try:
             session.close()
+        except:
+            pass
+        # Clean up the engine
+        try:
+            engine_local.dispose()
         except:
             pass
 
