@@ -777,142 +777,26 @@ def verify_bin(bin_code):
 def generate_more_bins():
     """Generate and verify additional BINs using Neutrino API"""
     try:
-        # Count existing BINs in the database
-        existing_bins_count = db_session.query(func.count(BIN.id)).scalar() or 0
-        logger.info(f"Currently have {existing_bins_count} BINs in the database")
+        # Use our improved BIN generator with better database handling
+        from bin_generator import generate_bins
         
-        # Process 20 BINs at a time to avoid timeouts (client can call multiple times)
+        # Get parameters from request
         count = min(int(request.args.get('count', 10)), 20)
-        
-        # Get cross-border flag - default to True to generate cross-border BINs
         include_cross_border = request.args.get('cross_border', 'true').lower() == 'true'
         
-        logger.info(f"Generating {count} BINs (limited to prevent timeouts)")
-        if include_cross_border:
-            logger.info("Including cross-border fraud detection")
+        # Generate BINs with the improved function
+        result = generate_bins(count=count, include_cross_border=include_cross_border)
         
-        # Get all existing BINs to avoid duplicates
-        existing_bins = set(bin_record.bin_code for bin_record in db_session.query(BIN.bin_code).all())
-        
-        # Known vulnerable BIN prefixes by issuer (based on historical exploits)
-        # These prefixes are more likely to be exploitable and lack proper 3DS support
-        known_vulnerable_prefixes = [
-            # Visa (4-series) - specific prefixes known to have lower 3DS adoption
-            "404", "411", "422", "424", "427", "431", "438", "440", "446", "448", 
-            "449", "451", "453", "459", "462", "465", "474", "475", "476", "485",
+        # Return appropriate response based on result status
+        if result['status'] == 'success':
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
             
-            # Mastercard (5-series) - specific prefixes with historically lower security
-            "510", "512", "517", "518", "523", "528", "530", "539", "542", "547",
-            "549", "555", "559",
-            
-            # American Express (3-series) - specific prefixes with lower 3DS adoption
-            "340", "346", "373", "374",
-            
-            # Discover (6-series) - specific prefixes known to have lower 3DS adoption
-            "601", "644", "649", "650", "651", "654", "659", "690"
-        ]
-        
-        logger.info(f"Generating {count} new verified BINs using Neutrino API (focusing on potentially exploitable BINs)")
-        
-        # Generate BIN combinations to try
-        import random
-        bins_to_verify = []
-        
-        # Combine historical vulnerable BINs with some truly random ones for diversity
-        for _ in range(count * 2):  # Generate more than needed to account for verification failures
-            # 80% of the time use known vulnerable prefixes, 20% of the time use random generation
-            if random.random() < 0.8 and known_vulnerable_prefixes:
-                # Use known vulnerable prefixes
-                prefix = random.choice(known_vulnerable_prefixes)
-                
-                # Complete the 6-digit BIN
-                remaining_digits = 6 - len(prefix)
-                bin_code = prefix + ''.join([str(random.randint(0, 9)) for _ in range(remaining_digits)])
-            else:
-                # Generate completely random BIN from major card networks
-                first_digit = random.choice(['3', '4', '5', '6'])
-                if first_digit == '3':
-                    # For Amex, use only 34 or 37 as prefix
-                    second_digit = random.choice(['4', '7'])
-                    bin_code = '3' + second_digit + ''.join([str(random.randint(0, 9)) for _ in range(4)])
-                elif first_digit == '5':
-                    # For Mastercard, make sure second digit is 1-5
-                    second_digit = str(random.randint(1, 5))
-                    bin_code = '5' + second_digit + ''.join([str(random.randint(0, 9)) for _ in range(4)])
-                elif first_digit == '6':
-                    # For Discover, use only 60, 64, 65 as prefix
-                    second_digit = random.choice(['0', '4', '5'])
-                    bin_code = '6' + second_digit + ''.join([str(random.randint(0, 9)) for _ in range(4)])
-                else:
-                    # For Visa (4-series), any random 5 digits will do
-                    bin_code = '4' + ''.join([str(random.randint(0, 9)) for _ in range(5)])
-            
-            if bin_code not in existing_bins and bin_code not in bins_to_verify:
-                bins_to_verify.append(bin_code)
-        
-        # Create a BIN enricher to verify and enrich BINs with real data from Neutrino API
-        bin_enricher = BinEnricher()
-        
-        # Process BINs in batches to improve performance
-        logger.info(f"Verifying {len(bins_to_verify)} BINs with Neutrino API")
-        enriched_bins = bin_enricher.enrich_bins_batch(bins_to_verify[:count*2])
-        
-        if not enriched_bins:
-            return jsonify({'status': 'error', 'message': 'No BINs could be verified with Neutrino API. Please check your API credentials.'}), 400
-        
-        # Limit to requested count    
-        enriched_bins = enriched_bins[:count]
-        logger.info(f"Successfully verified {len(enriched_bins)} BINs with Neutrino API")
-        
-        # Add cross-border exploit classification to some of the BINs if requested
-        if include_cross_border:
-            # Get all exploit types
-            exploit_types = db_session.query(ExploitType).all()
-            exploit_type_map = {et.name: et for et in exploit_types}
-            
-            # Set cross-border exploit type to approximately 40% of BINs
-            for i, bin_data in enumerate(enriched_bins):
-                if random.random() < 0.4:
-                    # Simulate cross-border fraud by setting a transaction location
-                    # that differs from the card's issuing country
-                    card_country = bin_data.get("country", "US")
-                    
-                    # List of common transaction countries different from card's country
-                    transaction_countries = ["US", "CA", "GB", "FR", "DE", "IT", "ES", "JP", "SG", "AU"]
-                    # Remove the card's own country from the list
-                    if card_country in transaction_countries:
-                        transaction_countries.remove(card_country)
-                    
-                    # Select a random transaction country
-                    transaction_country = random.choice(transaction_countries)
-                    
-                    bin_data["transaction_country"] = transaction_country
-                    bin_data["exploit_type"] = "cross-border"
-                    
-                    logger.info(f"BIN {bin_data['BIN']} flagged as cross-border: " + 
-                                f"card from {card_country}, transaction in {transaction_country}")
-                else:
-                    # For other BINs, assign random exploit types from our list (excluding cross-border)
-                    available_types = [
-                        "skimming", "card-not-present", "track-data-compromise", 
-                        "malware-compromise", "raw-dump", "cvv-compromise"
-                    ]
-                    bin_data["exploit_type"] = random.choice(available_types)
-            
-        # Save the verified BINs to the database
-        created, updated = save_bins_to_database(enriched_bins)
-        
-        # Return success response
-        total_bins = db_session.query(BIN).count()
-        return jsonify({
-            'status': 'success',
-            'new_bins': created,
-            'updated_bins': updated,
-            'total_bins': total_bins
-        })
-        
     except Exception as e:
         logger.error(f"Error generating verified BINs: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/refresh')
