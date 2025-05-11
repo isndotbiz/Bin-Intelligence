@@ -1242,10 +1242,8 @@
                     // Create state cards
                     const stateContainer = document.getElementById('us-state-bins-container');
                     
-                    // Sort states by number of BINs (descending)
-                    const sortedStates = Object.keys(binsByState).sort((a, b) => 
-                        binsByState[b].length - binsByState[a].length
-                    );
+                    // Sort states alphabetically by name
+                    const sortedStates = Object.keys(binsByState).sort();
                     
                     // Create visual state cards
                     sortedStates.forEach(state => {
