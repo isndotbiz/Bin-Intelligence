@@ -722,11 +722,16 @@ def api_blocklist():
                 .filter(ExploitType.name == 'cross-border')\
                 .all()
             
-            # Use proper null checks for attribute access
-            has_cross_border = bool(cross_border_exploits)
-            has_transaction_country = bin_obj.transaction_country is not None and bin_obj.transaction_country != ''
-            has_country = bin_obj.country is not None and bin_obj.country != ''
-            countries_different = has_transaction_country and has_country and bin_obj.transaction_country != bin_obj.country
+            # Use proper null checks for attribute access with SQLAlchemy
+            has_cross_border = len(cross_border_exploits) > 0
+            
+            # Get attribute values safely
+            transaction_country = getattr(bin_obj, 'transaction_country', None)
+            country = getattr(bin_obj, 'country', None)
+            
+            has_transaction_country = transaction_country is not None and transaction_country != ''
+            has_country = country is not None and country != ''
+            countries_different = has_transaction_country and has_country and transaction_country != country
             
             if has_cross_border or countries_different:
                 risk_score += 30
@@ -748,19 +753,27 @@ def api_blocklist():
                     if e.exploit_type and e.exploit_type.name:
                         exploit_types.append(e.exploit_type.name)
             
-            # Add to scored bins list with proper null checks
-            scored_bins.append({
-                'bin_code': bin_obj.bin_code,
-                'issuer': bin_obj.issuer or 'Unknown',
-                'brand': bin_obj.brand or 'Unknown',
-                'country': bin_obj.country or 'Unknown',
-                'card_type': bin_obj.card_type or 'Unknown',
-                'is_verified': bin_obj.is_verified is True,
+            # Add to scored bins list with proper null checks - using getattr for safe access
+            bin_data = {
+                'bin_code': getattr(bin_obj, 'bin_code', ''),
+                'issuer': getattr(bin_obj, 'issuer', '') or 'Unknown',
+                'brand': getattr(bin_obj, 'brand', '') or 'Unknown',
+                'country': country or 'Unknown',
+                'card_type': getattr(bin_obj, 'card_type', '') or 'Unknown',
+                'is_verified': getattr(bin_obj, 'is_verified', False) is True,
                 'threeds_supported': has_3ds1 or has_3ds2,
                 'risk_score': risk_score,
-                'patch_status': bin_obj.patch_status or 'Unknown',
-                'exploit_types': exploit_types
-            })
+                'patch_status': getattr(bin_obj, 'patch_status', '') or 'Unknown',
+                'exploit_types': exploit_types,
+                'transaction_country': transaction_country
+            }
+            
+            # Add state information for US cards
+            state = getattr(bin_obj, 'state', None)
+            if country == 'US' and state:
+                bin_data['state'] = state
+            
+            scored_bins.append(bin_data)
         
         # Sort by risk score (highest first)
         scored_bins = sorted(scored_bins, key=lambda x: x['risk_score'], reverse=True)
@@ -775,10 +788,11 @@ def api_blocklist():
             from io import StringIO
             
             output = StringIO()
-            fieldnames = ['bin_code', 'risk_score', 'issuer', 'brand', 'country', 'card_type', 
-                        'is_verified', 'threeds_supported', 'patch_status', 'exploit_types']
+            fieldnames = ['bin_code', 'risk_score', 'issuer', 'brand', 'country', 'state', 
+                          'card_type', 'is_verified', 'threeds_supported', 'patch_status', 
+                          'exploit_types', 'transaction_country']
             
-            writer = csv.DictWriter(output, fieldnames=fieldnames)
+            writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction='ignore')
             writer.writeheader()
             
             for bin_data in scored_bins:

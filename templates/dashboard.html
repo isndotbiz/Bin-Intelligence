@@ -1594,6 +1594,59 @@
                 loadCrossBorderFraud();
             }
         });
+        
+        // Add the "Download BIN Database" button to the card header
+        const cardHeaders = document.querySelectorAll('.card-header');
+        cardHeaders.forEach(header => {
+            if (header.textContent.includes('Top BINs To Block')) {
+                const buttonGroup = header.querySelector('.d-flex.align-items-center');
+                if (buttonGroup) {
+                    // Create the download button element
+                    const downloadButton = document.createElement('button');
+                    downloadButton.id = 'download-bin-database';
+                    downloadButton.className = 'btn btn-sm btn-outline-primary me-2';
+                    downloadButton.innerHTML = '<i class="bi bi-cloud-download"></i> Full BIN Database';
+                    
+                    // Insert before the refresh button
+                    const refreshButton = buttonGroup.querySelector('#refresh-blocklist');
+                    if (refreshButton) {
+                        buttonGroup.insertBefore(downloadButton, refreshButton);
+                    } else {
+                        buttonGroup.prepend(downloadButton);
+                    }
+                }
+            }
+        });
+        
+        // Add event listener for download bin database button
+        document.getElementById('download-bin-database')?.addEventListener('click', function() {
+            // Disable button to prevent multiple clicks
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Downloading...';
+            
+            // Call download endpoint
+            fetch('/download-bin-database')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert(`Successfully downloaded ${data.bins_count} BINs from Neutrino API's full database!`);
+                        // Reload page to show updated data
+                        window.location.reload();
+                    } else {
+                        alert(`Error downloading BIN database: ${data.message || 'Unknown error'}`);
+                        // Enable button
+                        this.disabled = false;
+                        this.innerHTML = '<i class="bi bi-cloud-download"></i> Full BIN Database';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error downloading BIN database:', error);
+                    alert('Error downloading BIN database. Please try again.');
+                    // Enable button
+                    this.disabled = false;
+                    this.innerHTML = '<i class="bi bi-cloud-download"></i> Full BIN Database';
+                });
+        });
     </script>
 </body>
 </html>
