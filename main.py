@@ -364,89 +364,28 @@ def get_bins_from_database():
 def get_database_statistics():
     """Get statistics from the database"""
     try:
-        total_bins = db_session.query(func.count(BIN.id)).scalar() or 0
-        
-        # Get patch status counts
-        patch_status = {}
-        patch_results = db_session.query(BIN.patch_status, func.count(BIN.id)) \
-            .group_by(BIN.patch_status).all()
-        for status, count in patch_results:
-            patch_status[status or "unknown"] = count
-        
-        # Get brand counts - normalize names to avoid duplicates
-        brand_mapping = {
-            'AMEX': 'AMERICAN EXPRESS',
-            'AMERICAN EXPRESS': 'AMERICAN EXPRESS',
-            'MASTERCARD': 'MASTERCARD', 
-            'VISA': 'VISA',
-            'DISCOVER': 'DISCOVER'
-        }
-        
-        # Get all brands from database
-        brand_results = db_session.query(BIN.brand, func.count(BIN.id)) \
-            .group_by(BIN.brand).all()
-            
-        # Normalize and combine brands
-        normalized_brands = {}
-        for brand, count in brand_results:
-            brand_key = brand_mapping.get((brand or "").upper(), brand or "unknown")
-            normalized_brands[brand_key] = normalized_brands.get(brand_key, 0) + count
-            
-        # Sort by count and limit to top 10
-        brands = dict(sorted(normalized_brands.items(), key=lambda x: x[1], reverse=True)[:10])
-        
-        # Get country counts
-        countries = {}
-        country_results = db_session.query(BIN.country, func.count(BIN.id)) \
-            .group_by(BIN.country).order_by(func.count(BIN.id).desc()).limit(10).all()
-        for country, count in country_results:
-            countries[country or "unknown"] = count
-        
-        # Get exploit type counts
-        exploit_types = {}
-        exploit_results = db_session.query(ExploitType.name, func.count(BINExploit.id)) \
-            .join(BINExploit).group_by(ExploitType.name) \
-            .order_by(func.count(BINExploit.id).desc()).all()
-        for name, count in exploit_results:
-            exploit_types[name] = count
-        
-        # Get 3DS support counts
-        threeds1_count = db_session.query(func.count(BIN.id)) \
-            .filter(BIN.threeds1_supported == True).scalar() or 0
-        threeds2_count = db_session.query(func.count(BIN.id)) \
-            .filter(BIN.threeds2_supported == True).scalar() or 0
-        no_3ds_count = db_session.query(func.count(BIN.id)) \
-            .filter(BIN.threeds1_supported == False, BIN.threeds2_supported == False).scalar() or 0
-            
-        # Get verification status counts
-        verified_count = db_session.query(func.count(BIN.id)) \
-            .filter(BIN.is_verified == True).scalar() or 0
-        
-        # Prepare statistics
-        stats = {
-            'total_bins': total_bins,
-            'exploit_types': exploit_types,
-            'patch_status': patch_status,
-            'brands': brands,
-            'countries': countries,
-            'verification': {
-                'verified': verified_count,
-                'unverified': total_bins - verified_count
-            },
-            '3ds_support': {
-                '3DS_v1': threeds1_count,
-                '3DS_v2': threeds2_count,
-                'No_3DS': no_3ds_count
-            }
-        }
-        
+        # Use our improved dashboard handler to get statistics
+        from dashboard_handler import get_dashboard_statistics
+        stats = get_dashboard_statistics()
+        logger.info("Successfully retrieved dashboard statistics using improved handler")
         return stats
-        
     except Exception as e:
-        logger.error(f"Error getting statistics from database: {str(e)}")
-        # Fallback to file-based stats if database query fails
-        bins_data = load_bin_data()
-        return get_bin_statistics(bins_data)
+        logger.error(f"Error retrieving database statistics: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        # Return default empty stats
+        return {
+            'total_bins': 0,
+            'verified_bins': 0,
+            'verification_percentage': 0,
+            'exploitable_bins': 0,
+            'patched_bins': 0,
+            'exploitable_percentage': 0,
+            'bins_by_scheme': {},
+            'bins_by_country': {},
+            'bins_by_transaction_country': {},
+            'bins_by_state': {}
+        }
 
 @app.route('/api/bins')
 def api_bins():

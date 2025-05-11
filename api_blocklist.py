@@ -4,17 +4,15 @@ Blocklist API Module - Enhanced for database stability
 This module provides the implementation for the `/api/blocklist` endpoint
 with improved database connection handling.
 """
-import logging
-from datetime import datetime
-from io import StringIO
-import csv
-import traceback
 
+import logging
+from typing import Dict, Any, Optional
 from flask import jsonify, request, Response
 
-from db_handler import get_blocklist_bins
+from db_handler import get_blocklist_bins, get_blocklist_csv
 
 # Configure logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def handle_blocklist_request(app):
@@ -36,56 +34,68 @@ def handle_blocklist_request(app):
     3. 3DS support (BINs without 3DS are higher risk)
     4. Verification status (verified BINs get higher priority as they're confirmed)
     """
-    try:
-        # Parse request parameters
-        limit = request.args.get('limit', default=100, type=int)
-        output_format = request.args.get('format', default='json', type=str).lower()
-        include_patched = request.args.get('include_patched', default='false', type=str).lower() == 'true'
-        country_filter = request.args.get('country', default=None, type=str)
-        transaction_country_filter = request.args.get('transaction_country', default=None, type=str)
-        
-        # Get BINs from database using enhanced handler
-        scored_bins = get_blocklist_bins(
-            limit=limit, 
-            include_patched=include_patched,
-            country_filter=country_filter,
-            transaction_country_filter=transaction_country_filter
-        )
-        
-        # Handle different output formats
-        if output_format == 'csv':
-            # Generate CSV data
-            output = StringIO()
-            fieldnames = ['bin_code', 'risk_score', 'issuer', 'brand', 'country', 'state', 
-                          'card_type', 'is_verified', 'threeds_supported', 'patch_status', 
-                          'exploit_types', 'transaction_country']
+    
+    @app.route('/api/blocklist')
+    def api_blocklist():
+        try:
+            # Get parameters from request
+            limit = request.args.get('limit', default=100, type=int)
+            output_format = request.args.get('format', default='json', type=str).lower()
+            include_patched = request.args.get('include_patched', default='false', type=str).lower() == 'true'
+            country = request.args.get('country', default=None, type=str)
+            transaction_country = request.args.get('transaction_country', default=None, type=str)
             
-            writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction='ignore')
-            writer.writeheader()
+            # Limit the maximum number of records to prevent overload
+            if limit > 1000:
+                limit = 1000
+                
+            logger.info(f"Blocklist request: limit={limit}, format={output_format}, include_patched={include_patched}, country={country}, transaction_country={transaction_country}")
             
-            for bin_data in scored_bins:
-                # Convert exploit_types list to string for CSV
-                if 'exploit_types' in bin_data and isinstance(bin_data['exploit_types'], list):
-                    bin_data['exploit_types'] = ', '.join(bin_data['exploit_types'])
-                writer.writerow(bin_data)
+            # Handle CSV format request
+            if output_format == 'csv':
+                # Get the CSV data
+                csv_data = get_blocklist_csv(
+                    limit=limit,
+                    include_patched=include_patched,
+                    country_filter=country,
+                    transaction_country_filter=transaction_country
+                )
+                
+                # Return as a downloadable CSV file
+                return Response(
+                    csv_data,
+                    mimetype='text/csv',
+                    headers={'Content-Disposition': 'attachment; filename=bin_blocklist.csv'}
+                )
             
-            csv_data = output.getvalue()
-            
-            # Create a downloadable response
-            response = Response(
-                csv_data,
-                mimetype='text/csv',
-                headers={"Content-Disposition": "attachment;filename=bin_blocklist.csv"}
-            )
-            return response
-        else:
-            # JSON is the default format
-            return jsonify({
-                "bins": scored_bins,
-                "total": len(scored_bins),
-                "timestamp": datetime.utcnow().isoformat()
-            })
-    except Exception as e:
-        logger.error(f"Error in api_blocklist: {str(e)}")
-        logger.error(traceback.format_exc())
-        return jsonify({"error": str(e)}), 500
+            # Handle JSON format request (default)
+            else:
+                # Get the blocklist BINs
+                bins = get_blocklist_bins(
+                    limit=limit,
+                    include_patched=include_patched,
+                    country_filter=country,
+                    transaction_country_filter=transaction_country
+                )
+                
+                # Prepare the response
+                response = {
+                    'count': len(bins),
+                    'limit': limit,
+                    'filters': {
+                        'include_patched': include_patched,
+                        'country': country,
+                        'transaction_country': transaction_country
+                    },
+                    'bins': bins
+                }
+                
+                return jsonify(response)
+                
+        except Exception as e:
+            logger.error(f"Error in blocklist API: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return jsonify({"error": str(e)}), 500
+    
+    return api_blocklist
