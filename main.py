@@ -777,18 +777,23 @@ def verify_bin(bin_code):
 def generate_more_bins():
     """Generate and verify additional BINs using Neutrino API"""
     try:
-        # Use our improved BIN generator with better database handling
-        from bin_generator import generate_bins
+        # Use our simplified BIN generator for better reliability
+        from fixed_bin_generator import generate_bins
         
         # Get parameters from request
         count = min(int(request.args.get('count', 10)), 20)
         include_cross_border = request.args.get('cross_border', 'true').lower() == 'true'
         
-        # Generate BINs with the improved function
+        logger.info(f"Starting BIN generation: count={count}, cross_border={include_cross_border}")
+        
+        # Generate BINs with the simplified function
         result = generate_bins(count=count, include_cross_border=include_cross_border)
         
+        # Log result for debugging
+        logger.info(f"BIN generation result: {result}")
+        
         # Return appropriate response based on result status
-        if result['status'] == 'success':
+        if result.get('status') == 'success':
             return jsonify(result)
         else:
             return jsonify(result), 400
