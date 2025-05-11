@@ -318,72 +318,48 @@ def index():
 
 def get_bins_from_database():
     """Query BINs from the database with improved transaction handling"""
-    # Create a new session for this operation
-    from sqlalchemy.orm import Session
-    session = Session(engine)
-    
     try:
-        # Get all BINs from database using the new session
-        bin_records = session.query(BIN).all()
+        # Use our improved dashboard handler to get BINs
+        from dashboard_handler import get_all_bins
+        raw_bins_data = get_all_bins()
         
-        # Convert to list of dictionaries
+        # Transform the data to the format expected by the frontend
         bins_data = []
-        for bin_record in bin_records:
+        for bin_record in raw_bins_data:
             # Get the primary exploit type for this BIN
-            exploit_record = session.query(BINExploit, ExploitType) \
-                .join(ExploitType) \
-                .filter(BINExploit.bin_id == bin_record.id) \
-                .order_by(BINExploit.frequency.desc()) \
-                .first()
+            primary_exploit = None
+            if 'exploit_types' in bin_record and bin_record['exploit_types']:
+                primary_exploit = bin_record['exploit_types'][0]['name'] if bin_record['exploit_types'] else None
             
-            exploit_type = exploit_record[1].name if exploit_record else None
-            
-            # Handle datetime conversion outside the dict
-            verified_at_str = None
-            if bin_record.verified_at is not None:
-                try:
-                    verified_at_str = bin_record.verified_at.isoformat()
-                except:
-                    pass
-            
+            # Transform to expected format
             bin_data = {
-                "BIN": bin_record.bin_code,
-                "issuer": bin_record.issuer,
-                "brand": bin_record.brand,
-                "type": bin_record.card_type,
-                "prepaid": bin_record.prepaid,
-                "country": bin_record.country,
-                "transaction_country": bin_record.transaction_country,
-                "threeDS1Supported": bin_record.threeds1_supported,
-                "threeDS2supported": bin_record.threeds2_supported,
-                "patch_status": bin_record.patch_status,
-                "exploit_type": exploit_type,
-                "is_verified": bin_record.is_verified,
-                "data_source": bin_record.data_source,
-                "issuer_website": bin_record.issuer_website,
-                "issuer_phone": bin_record.issuer_phone,
-                "verified_at": verified_at_str
+                "BIN": bin_record.get('bin'),
+                "issuer": bin_record.get('bank_name'),
+                "brand": bin_record.get('scheme'),
+                "type": bin_record.get('card_type'),
+                "prepaid": bin_record.get('is_prepaid'),
+                "country": bin_record.get('country'),
+                "transaction_country": bin_record.get('transaction_country'),
+                "threeDS1Supported": bin_record.get('threeDS1Supported'),
+                "threeDS2supported": bin_record.get('threeDS2Supported'),
+                "patch_status": bin_record.get('patch_status'),
+                "exploit_type": primary_exploit,
+                "is_verified": bin_record.get('is_verified'),
+                "data_source": bin_record.get('data_source'),
+                "issuer_website": bin_record.get('bank_url'),
+                "issuer_phone": bin_record.get('bank_phone'),
+                "verified_at": bin_record.get('verification_date')
             }
             bins_data.append(bin_data)
         
-        logger.info(f"Loaded {len(bins_data)} BINs from database")
+        logger.info(f"Loaded {len(bins_data)} BINs from database using improved dashboard handler")
         return bins_data
-        
     except Exception as e:
         logger.error(f"Error loading BINs from database: {str(e)}")
-        # Make sure to rollback on error
-        try:
-            session.rollback()
-        except:
-            pass
-        # Fallback to file if database query fails
-        return load_bin_data()
-    finally:
-        # Always close the session to avoid connection leaks
-        try:
-            session.close()
-        except:
-            pass
+        import traceback
+        logger.error(traceback.format_exc())
+        # Return empty list if error occurs
+        return []
 
 def get_database_statistics():
     """Get statistics from the database"""
