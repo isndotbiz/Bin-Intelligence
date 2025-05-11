@@ -480,10 +480,10 @@ def api_bins():
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 200, type=int)  # Default to 200 BINs per page
         
-        # Use our improved database handler to get BINs
-        from db_handler import get_all_bins
+        # Use our improved dashboard handler to get BINs
+        from dashboard_handler import get_all_bins
         bins_data = get_all_bins()
-        logger.info(f"Loaded {len(bins_data)} BINs from database using improved handler")
+        logger.info(f"Loaded {len(bins_data)} BINs from database using improved dashboard handler")
         
         # Add filter parameters
         brand_filter = request.args.get('brand', '')
@@ -536,15 +536,15 @@ def api_bins():
 def api_stats():
     """API endpoint to get statistics"""
     try:
-        # First try to get stats from database
-        stats = get_database_statistics()
-        if not stats or not stats.get('total_bins'):
-            # If no data in database, fallback to file
-            bins_data = load_bin_data()
-            stats = get_bin_statistics(bins_data)
+        # Use our improved dashboard handler to get statistics
+        from dashboard_handler import get_dashboard_statistics
+        stats = get_dashboard_statistics()
+        logger.info("Successfully retrieved dashboard statistics")
         return jsonify(stats)
     except Exception as e:
         logger.error(f"Error in api_stats: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
         
 @app.route('/api/cross-border-stats')
@@ -557,26 +557,16 @@ def api_cross_border_stats():
     - transaction_country: The country where exploited cards are being used (default: 'US')
     - limit: Number of countries to return (default: 5)
     """
-    # Create a dedicated session that's independent of other transactions
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-    
-    # Create a new connection to the database
-    engine_local = create_engine(app.config["SQLALCHEMY_DATABASE_URI"])
-    Session = sessionmaker(bind=engine_local)
-    session = Session()
-    
     try:
         transaction_country = request.args.get('transaction_country', default='US', type=str).upper()
         limit = request.args.get('limit', default=5, type=int)
         
-        # Get BINs with the specified transaction country - filter using expressions not direct comparison
-        query = session.query(BIN)
+        # Use our improved dashboard handler to get cross-border stats
+        from dashboard_handler import get_cross_border_stats
+        stats = get_cross_border_stats(transaction_country=transaction_country, limit=limit)
+        logger.info(f"Successfully retrieved cross-border stats for {transaction_country}")
         
-        # Add filters one by one using SQLAlchemy expressions
-        transaction_filter = BIN.transaction_country == transaction_country
-        different_country_filter = BIN.country != transaction_country
-        not_null_filter = BIN.country.isnot(None)
+        return jsonify(stats)
         
         # Apply the filters
         query = query.filter(transaction_filter)
