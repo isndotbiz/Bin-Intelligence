@@ -9,6 +9,7 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* Dashboard styling */
         .dashboard-card {
             transition: transform 0.3s ease;
             height: 100%;
@@ -24,6 +25,64 @@
             justify-content: center;
             align-items: center;
             height: 200px;
+        }
+        
+        /* Enhanced color scheme - based on color psychology and accessibility */
+        /* Blue-green color scheme: calming, trustworthy, and easy to read */
+        .badge.bg-danger {
+            background-color: #e63946 !important; /* Improved red */
+            color: #f1faee !important; /* Light background for contrast */
+            font-weight: 600;
+        }
+        .badge.bg-warning {
+            background-color: #f4a261 !important; /* Soft orange */
+            color: #212529 !important; /* Dark text for contrast */
+            font-weight: 600;
+        }
+        .badge.bg-info {
+            background-color: #a8dadc !important; /* Light blue */
+            color: #1d3557 !important; /* Dark blue text */
+            font-weight: 600;
+        }
+        .badge.bg-success {
+            background-color: #2a9d8f !important; /* Teal */
+            color: #f1faee !important; 
+            font-weight: 600;
+        }
+        .badge.bg-secondary {
+            background-color: #457b9d !important; /* Medium blue */
+            color: #f1faee !important;
+            font-weight: 600;
+        }
+        
+        /* Dark mode compatible table highlights */
+        .table-danger {
+            background-color: rgba(230, 57, 70, 0.2) !important; 
+        }
+        .table-warning {
+            background-color: rgba(244, 162, 97, 0.2) !important;
+        }
+        
+        /* Better state visualization for US BINs */
+        .state-map {
+            height: 300px;
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+        
+        /* US state cards for grouping */
+        .state-card {
+            margin-bottom: 0.5rem;
+            border-radius: 0.25rem;
+            background-color: #1d3557;
+            color: #f1faee;
+            padding: 0.5rem;
+        }
+        .state-card-header {
+            font-weight: bold;
+            border-bottom: 1px solid #f1faee;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.25rem;
         }
         .bin-table-container {
             max-height: 500px;
@@ -272,7 +331,24 @@
                             
                             <!-- US Cards Tab -->
                             <div class="tab-pane fade" id="us-bins-content" role="tabpanel" aria-labelledby="us-bins-tab">
+                                <div class="row mb-4">
+                                    <div class="col-md-12">
+                                        <div class="card bg-dark">
+                                            <div class="card-header">
+                                                <h5 class="mb-0">United States BINs by State</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="us-state-map" class="state-map mb-3"></div>
+                                                <div class="row" id="us-state-bins-container">
+                                                    <!-- State cards will be inserted here -->
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
                                 <div class="table-responsive">
+                                    <h5>All US BINs</h5>
                                     <table class="table table-striped table-hover">
                                         <thead>
                                             <tr>
@@ -280,6 +356,7 @@
                                                 <th>Risk Score</th>
                                                 <th>Brand</th>
                                                 <th>Issuer</th>
+                                                <th>State</th>
                                                 <th>Type</th>
                                                 <th>Exploit Types</th>
                                                 <th>3DS</th>
@@ -1111,12 +1188,13 @@
         }
         
         // Function to load US BINs
-        function loadUSBins(limit = 25) {
+        function loadUSBins(limit = 50) {
             // Show loading spinner
             document.getElementById('us-bins-spinner').style.display = 'flex';
             
             // Clear any existing data
             document.getElementById('us-bins-table-body').innerHTML = '';
+            document.getElementById('us-state-bins-container').innerHTML = '';
             
             // Fetch the blocklist from API with US country filter
             fetch(`/api/blocklist?limit=${limit}&country=US`)
@@ -1131,13 +1209,75 @@
                     // If no data, show message
                     if (!data.bins || data.bins.length === 0) {
                         const row = document.createElement('tr');
-                        row.innerHTML = `<td colspan="8" class="text-center">No US high-risk BINs found.</td>`;
+                        row.innerHTML = `<td colspan="9" class="text-center">No US high-risk BINs found.</td>`;
                         tableBody.appendChild(row);
                         return;
                     }
                     
+                    // Ensure we only have US BINs
+                    const usBins = data.bins.filter(bin => bin.country === 'US');
+                    
+                    if (usBins.length === 0) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td colspan="9" class="text-center">No US high-risk BINs found.</td>`;
+                        tableBody.appendChild(row);
+                        return;
+                    }
+                    
+                    // Group BINs by state
+                    const binsByState = {};
+                    
+                    usBins.forEach(bin => {
+                        const state = bin.state || 'Unknown';
+                        if (!binsByState[state]) {
+                            binsByState[state] = [];
+                        }
+                        binsByState[state].push(bin);
+                    });
+                    
+                    // Create state cards
+                    const stateContainer = document.getElementById('us-state-bins-container');
+                    
+                    // Sort states by number of BINs (descending)
+                    const sortedStates = Object.keys(binsByState).sort((a, b) => 
+                        binsByState[b].length - binsByState[a].length
+                    );
+                    
+                    // Create visual state cards
+                    sortedStates.forEach(state => {
+                        const stateCard = document.createElement('div');
+                        stateCard.className = 'col-md-4 mb-3';
+                        
+                        const stateBins = binsByState[state];
+                        const highRiskCount = stateBins.filter(bin => bin.risk_score >= 90).length;
+                        const medRiskCount = stateBins.filter(bin => bin.risk_score >= 70 && bin.risk_score < 90).length;
+                        
+                        // Determine card color based on risk level
+                        let cardClass = 'bg-info';
+                        if (highRiskCount > 0) {
+                            cardClass = 'bg-danger';
+                        } else if (medRiskCount > 0) {
+                            cardClass = 'bg-warning text-dark';
+                        }
+                        
+                        stateCard.innerHTML = `
+                            <div class="card state-card">
+                                <div class="state-card-header">
+                                    ${state} <span class="float-end badge ${cardClass}">${stateBins.length}</span>
+                                </div>
+                                <div class="state-card-body">
+                                    <div>High Risk: <span class="badge bg-danger">${highRiskCount}</span></div>
+                                    <div>Medium Risk: <span class="badge bg-warning text-dark">${medRiskCount}</span></div>
+                                    <div>Low Risk: <span class="badge bg-info text-dark">${stateBins.length - highRiskCount - medRiskCount}</span></div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        stateContainer.appendChild(stateCard);
+                    });
+                    
                     // For each BIN, create a table row
-                    data.bins.forEach(bin => {
+                    usBins.forEach(bin => {
                         const row = document.createElement('tr');
                         
                         // Highlight based on risk score
@@ -1157,6 +1297,7 @@
                             <td><span class="badge ${bin.risk_score >= 90 ? 'bg-danger' : (bin.risk_score >= 70 ? 'bg-warning text-dark' : 'bg-info text-dark')}">${bin.risk_score}</span></td>
                             <td>${bin.brand}</td>
                             <td>${bin.issuer}</td>
+                            <td>${bin.state || 'Unknown'}</td>
                             <td>${bin.card_type}</td>
                             <td>${exploitBadges || '<span class="badge bg-secondary">None</span>'}</td>
                             <td>${bin.threeds_supported ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-danger">No</span>'}</td>
@@ -1174,7 +1315,7 @@
                     // Show error message
                     const tableBody = document.getElementById('us-bins-table-body');
                     const row = document.createElement('tr');
-                    row.innerHTML = `<td colspan="8" class="text-center text-danger">Error loading US BINs. Please try refreshing the page.</td>`;
+                    row.innerHTML = `<td colspan="9" class="text-center text-danger">Error loading US BINs. Please try refreshing the page.</td>`;
                     tableBody.appendChild(row);
                 });
         }
