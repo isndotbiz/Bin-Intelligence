@@ -480,20 +480,39 @@ def api_bins():
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 200, type=int)  # Default to 200 BINs per page
         
-        # First try to get BINs from database
-        bins_data = get_bins_from_database()
-        if not bins_data:
-            # If no data in database, fallback to file
-            bins_data = load_bin_data()
+        # Use our improved database handler to get BINs
+        from db_handler import get_all_bins
+        bins_data = get_all_bins()
+        logger.info(f"Loaded {len(bins_data)} BINs from database using improved handler")
+        
+        # Add filter parameters
+        brand_filter = request.args.get('brand', '')
+        country_filter = request.args.get('country', '')
+        exploit_filter = request.args.get('exploit', '')
+        state_filter = request.args.get('state', '')
+        
+        # Apply filters if provided
+        filtered_bins = bins_data
+        if brand_filter:
+            filtered_bins = [b for b in filtered_bins if b.get('brand', '').upper() == brand_filter.upper()]
+            
+        if country_filter:
+            filtered_bins = [b for b in filtered_bins if b.get('country', '').upper() == country_filter.upper()]
+            
+        if exploit_filter:
+            filtered_bins = [b for b in filtered_bins if exploit_filter in b.get('exploit_types', [])]
+            
+        if state_filter:
+            filtered_bins = [b for b in filtered_bins if b.get('state', '').upper() == state_filter.upper()]
         
         # Calculate total pages
-        total_bins = len(bins_data)
+        total_bins = len(filtered_bins)
         total_pages = (total_bins + per_page - 1) // per_page  # Ceiling division
         
         # Apply pagination
         start_idx = (page - 1) * per_page
         end_idx = start_idx + per_page
-        paginated_bins = bins_data[start_idx:end_idx]
+        paginated_bins = filtered_bins[start_idx:end_idx]
         
         # Prepare response with pagination metadata
         response = {
@@ -509,6 +528,8 @@ def api_bins():
         return jsonify(response)
     except Exception as e:
         logger.error(f"Error in api_bins: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/stats')

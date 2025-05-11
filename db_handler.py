@@ -5,6 +5,7 @@ This module provides stable and efficient database access functions for BIN Inte
 It serves as an abstraction layer for database operations to ensure connection stability
 and prevent common database errors.
 """
+import json
 import logging
 import os
 from typing import List, Dict, Any, Optional
@@ -39,6 +40,71 @@ engine = create_engine(
 # Create session factory
 DBSession = sessionmaker(bind=engine)
 
+def get_all_bins() -> List[Dict[str, Any]]:
+    """
+    Get all BINs from the database with robust error handling.
+    
+    Returns:
+        List of BIN dictionaries with all data
+    """
+    # Create a fresh session for this request
+    session = DBSession()
+    
+    try:
+        # Execute a raw SQL query to get all BINs
+        query = """
+            SELECT * FROM bins
+        """
+        result = session.execute(text(query))
+        rows = result.fetchall()
+        
+        # Process the results
+        bins_data = []
+        for row in rows:
+            # Convert row to dictionary
+            bin_dict = dict(row._mapping)
+            
+            # Get exploit types for this BIN
+            exploit_query = """
+                SELECT et.name
+                FROM bin_exploits be
+                JOIN exploit_types et ON be.exploit_type_id = et.id
+                WHERE be.bin_id = :bin_id
+            """
+            exploit_result = session.execute(text(exploit_query), {'bin_id': bin_dict.get('id')})
+            exploit_types = [row[0] for row in exploit_result]
+            
+            # Convert the database model to a more frontend-friendly format
+            processed_bin = {
+                'bin_code': bin_dict.get('bin_code', ''),
+                'issuer': bin_dict.get('issuer') or 'Unknown',
+                'brand': bin_dict.get('brand') or 'Unknown',
+                'country': bin_dict.get('country') or 'Unknown',
+                'card_type': bin_dict.get('card_type') or 'Unknown',
+                'prepaid': bin_dict.get('prepaid') is True,
+                'is_verified': bin_dict.get('is_verified') is True,
+                'threeds1_supported': bin_dict.get('threeds1_supported') is True,
+                'threeds2_supported': bin_dict.get('threeds2_supported') is True,
+                'patch_status': bin_dict.get('patch_status') or 'Unknown',
+                'exploit_types': exploit_types,
+                'transaction_country': bin_dict.get('transaction_country') or None,
+                'state': bin_dict.get('state') or None
+            }
+            
+            bins_data.append(processed_bin)
+            
+        return bins_data
+        
+    except Exception as e:
+        logger.error(f"Error in get_all_bins: {str(e)}")
+        # Log detailed error for debugging
+        import traceback
+        logger.error(traceback.format_exc())
+        return []
+    finally:
+        # Always close the session to prevent connection leaks
+        session.close()
+        
 def get_blocklist_bins(
     limit: int = 100, 
     include_patched: bool = False,
