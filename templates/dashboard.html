@@ -1224,8 +1224,57 @@
                         return;
                     }
                     
-                    // Group BINs by state
+                    // Organize BINs by state for visualization
                     const binsByState = {};
+                    const stateContainer = document.getElementById('us-state-bins-container');
+                    
+                    // Group BINs by state
+                    usBins.forEach(bin => {
+                        const state = bin.state || 'Unknown';
+                        if (!binsByState[state]) {
+                            binsByState[state] = [];
+                        }
+                        binsByState[state].push(bin);
+                    });
+                    
+                    // Create state cards
+                    Object.keys(binsByState).sort().forEach(state => {
+                        const stateBins = binsByState[state];
+                        const stateCard = document.createElement('div');
+                        stateCard.className = 'col-md-4 mb-3';
+                        
+                        // Determine risk level based on number of exploitable BINs
+                        const exploitableBins = stateBins.filter(bin => bin.patch_status === 'Exploitable').length;
+                        const totalBins = stateBins.length;
+                        const riskPercentage = Math.round((exploitableBins / totalBins) * 100);
+                        
+                        let riskClass = 'bg-success';
+                        if (riskPercentage > 70) {
+                            riskClass = 'bg-danger';
+                        } else if (riskPercentage > 30) {
+                            riskClass = 'bg-warning';
+                        }
+                        
+                        stateCard.innerHTML = `
+                            <div class="card dashboard-card h-100">
+                                <div class="card-header ${riskClass} text-white d-flex justify-content-between align-items-center">
+                                    <span>${state}</span>
+                                    <span class="badge bg-light text-dark">${totalBins} BINs</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="progress mb-3">
+                                        <div class="progress-bar ${riskClass}" role="progressbar" style="width: ${riskPercentage}%" 
+                                            aria-valuenow="${riskPercentage}" aria-valuemin="0" aria-valuemax="100">
+                                            ${riskPercentage}% Exploitable
+                                        </div>
+                                    </div>
+                                    <p class="card-text">Top issuers: ${stateBins.slice(0, 3).map(bin => bin.issuer).join(', ')}</p>
+                                </div>
+                            </div>
+                        `;
+                        
+                        stateContainer.appendChild(stateCard);
+                    });
                     
                     usBins.forEach(bin => {
                         const state = bin.state || 'Unknown';
