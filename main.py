@@ -710,8 +710,9 @@ def api_blocklist():
             # Start with base score of 0
             risk_score = 0
             
-            # Factor 1: Patch status (0-50 points)
-            if bin_obj.patch_status == 'Exploitable':
+            # Factor 1: Patch status (0-50 points) - safe attribute access
+            patch_status = getattr(bin_obj, 'patch_status', None)
+            if patch_status == 'Exploitable':
                 risk_score += 50
             
             # Factor 2: Cross-border fraud (0-30 points)

@@ -1228,53 +1228,8 @@
                     const binsByState = {};
                     const stateContainer = document.getElementById('us-state-bins-container');
                     
-                    // Group BINs by state
-                    usBins.forEach(bin => {
-                        const state = bin.state || 'Unknown';
-                        if (!binsByState[state]) {
-                            binsByState[state] = [];
-                        }
-                        binsByState[state].push(bin);
-                    });
-                    
-                    // Create state cards
-                    Object.keys(binsByState).sort().forEach(state => {
-                        const stateBins = binsByState[state];
-                        const stateCard = document.createElement('div');
-                        stateCard.className = 'col-md-4 mb-3';
-                        
-                        // Determine risk level based on number of exploitable BINs
-                        const exploitableBins = stateBins.filter(bin => bin.patch_status === 'Exploitable').length;
-                        const totalBins = stateBins.length;
-                        const riskPercentage = Math.round((exploitableBins / totalBins) * 100);
-                        
-                        let riskClass = 'bg-success';
-                        if (riskPercentage > 70) {
-                            riskClass = 'bg-danger';
-                        } else if (riskPercentage > 30) {
-                            riskClass = 'bg-warning';
-                        }
-                        
-                        stateCard.innerHTML = `
-                            <div class="card dashboard-card h-100">
-                                <div class="card-header ${riskClass} text-white d-flex justify-content-between align-items-center">
-                                    <span>${state}</span>
-                                    <span class="badge bg-light text-dark">${totalBins} BINs</span>
-                                </div>
-                                <div class="card-body">
-                                    <div class="progress mb-3">
-                                        <div class="progress-bar ${riskClass}" role="progressbar" style="width: ${riskPercentage}%" 
-                                            aria-valuenow="${riskPercentage}" aria-valuemin="0" aria-valuemax="100">
-                                            ${riskPercentage}% Exploitable
-                                        </div>
-                                    </div>
-                                    <p class="card-text">Top issuers: ${stateBins.slice(0, 3).map(bin => bin.issuer).join(', ')}</p>
-                                </div>
-                            </div>
-                        `;
-                        
-                        stateContainer.appendChild(stateCard);
-                    });
+                    // Clear any previous state cards
+                    stateContainer.innerHTML = '';
                     
                     usBins.forEach(bin => {
                         const state = bin.state || 'Unknown';
@@ -1298,26 +1253,51 @@
                         stateCard.className = 'col-md-4 mb-3';
                         
                         const stateBins = binsByState[state];
+                        const exploitableBins = stateBins.filter(bin => bin.patch_status === 'Exploitable').length;
                         const highRiskCount = stateBins.filter(bin => bin.risk_score >= 90).length;
                         const medRiskCount = stateBins.filter(bin => bin.risk_score >= 70 && bin.risk_score < 90).length;
                         
-                        // Determine card color based on risk level
-                        let cardClass = 'bg-info';
-                        if (highRiskCount > 0) {
-                            cardClass = 'bg-danger';
-                        } else if (medRiskCount > 0) {
-                            cardClass = 'bg-warning text-dark';
+                        // Calculate exploitability percentage for risk indication
+                        const exploitPercentage = Math.round((exploitableBins / stateBins.length) * 100);
+                        
+                        // Determine card background class based on exploitability
+                        let headerClass = 'bg-success';
+                        if (exploitPercentage > 70) {
+                            headerClass = 'bg-danger';
+                        } else if (exploitPercentage > 30) {
+                            headerClass = 'bg-warning';
                         }
                         
+                        // Get unique issuers for this state (top 3)
+                        const topIssuers = [...new Set(stateBins.map(bin => bin.issuer))]
+                            .filter(issuer => issuer && issuer !== 'Unknown')
+                            .slice(0, 3)
+                            .join(', ');
+                        
                         stateCard.innerHTML = `
-                            <div class="card state-card">
-                                <div class="state-card-header">
-                                    ${state} <span class="float-end badge ${cardClass}">${stateBins.length}</span>
+                            <div class="card dashboard-card h-100">
+                                <div class="card-header ${headerClass} text-white d-flex justify-content-between align-items-center">
+                                    <span><strong>${state}</strong></span>
+                                    <span class="badge bg-light text-dark">${stateBins.length} BINs</span>
                                 </div>
-                                <div class="state-card-body">
-                                    <div>High Risk: <span class="badge bg-danger">${highRiskCount}</span></div>
-                                    <div>Medium Risk: <span class="badge bg-warning text-dark">${medRiskCount}</span></div>
-                                    <div>Low Risk: <span class="badge bg-info text-dark">${stateBins.length - highRiskCount - medRiskCount}</span></div>
+                                <div class="card-body">
+                                    <div class="progress mb-3">
+                                        <div class="progress-bar ${headerClass}" role="progressbar" style="width: ${exploitPercentage}%"
+                                            aria-valuenow="${exploitPercentage}" aria-valuemin="0" aria-valuemax="100">
+                                            ${exploitPercentage}% Exploitable
+                                        </div>
+                                    </div>
+                                    <div class="mb-2">
+                                        <small class="text-muted">Risk breakdown:</small>
+                                        <div>
+                                            <span class="badge bg-danger me-1">High: ${highRiskCount}</span>
+                                            <span class="badge bg-warning text-dark me-1">Medium: ${medRiskCount}</span>
+                                            <span class="badge bg-info text-dark">Low: ${stateBins.length - highRiskCount - medRiskCount}</span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <small class="text-muted">Top issuers: ${topIssuers || 'Unknown'}</small>
+                                    </div>
                                 </div>
                             </div>
                         `;
