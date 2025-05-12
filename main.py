@@ -773,8 +773,8 @@ def generate_more_bins():
         existing_bins_count = session.query(func.count(BIN.id)).scalar() or 0
         logger.info(f"Currently have {existing_bins_count} BINs in the database")
         
-        # Process 20 BINs at a time to avoid timeouts (client can call multiple times)
-        count = min(int(request.args.get('count', 10)), 20)
+        # Process up to 50 BINs at a time to avoid timeouts (client can call multiple times)
+        count = min(int(request.args.get('count', 10)), 50)
         
         # Get cross-border flag - default to True to generate cross-border BINs
         include_cross_border = request.args.get('cross_border', 'true').lower() == 'true'
