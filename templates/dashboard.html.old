@@ -1,13 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BIN Intelligence Dashboard</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -42,37 +40,60 @@
         }
         .sort-icon {
             display: inline-block;
+            width: 0;
+            height: 0;
+            margin-left: 5px;
+            vertical-align: middle;
+            content: "";
         }
         .sortable[data-sort-dir="asc"] .sort-icon:after {
             content: "▲";
-            font-size: 0.8em;
-            margin-left: 5px;
+            font-size: 0.7em;
+            vertical-align: 1px;
         }
         .sortable[data-sort-dir="desc"] .sort-icon:after {
             content: "▼";
-            font-size: 0.8em;
-            margin-left: 5px;
+            font-size: 0.7em;
+            vertical-align: 1px;
         }
         .dashboard-stats {
-            font-size: 3rem;
+            font-size: 1.8rem;
             font-weight: bold;
-            color: var(--bs-primary);
+        }
+        .chart-container {
+            position: relative;
+            height: 250px;
         }
     </style>
 </head>
 <body>
-    <div class="container-fluid p-4">
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <h2 class="mb-4"><i class="bi bi-shield-lock"></i> BIN Intelligence Dashboard</h2>
-                <p class="text-muted">
-                    Monitor and track exploited credit card BINs with real-time verification and 3DS support detection.
-                    This dashboard filters out non-major card networks (showing only Visa, MasterCard, American Express, and Discover).
-                </p>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-shield-lock-fill me-2"></i>
+                BIN Intelligence System
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#bins-table">BIN Data</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="refresh-data">Refresh Data</a>
+                    </li>
+                </ul>
             </div>
         </div>
+    </nav>
 
-        <!-- Stats Cards Row -->
+    <div class="container-fluid mt-4">
+        <!-- Top Stats Row -->
         <div class="row mb-4">
             <div class="col-md-3">
                 <div class="card dashboard-card">
@@ -110,7 +131,7 @@
                         Unique Issuers
                     </div>
                     <div class="card-body d-flex justify-content-center align-items-center">
-                        <div class="dashboard-stats" id="issuers-stat">0</div>
+                        <div class="dashboard-stats" id="unique-issuers-stat">0</div>
                     </div>
                 </div>
             </div>
@@ -159,7 +180,7 @@
             <div class="col-md-6">
                 <div class="card dashboard-card">
                     <div class="card-header">
-                        Card Brands
+                        Top Card Brands
                     </div>
                     <div class="card-body">
                         <div class="chart-container">
@@ -176,7 +197,7 @@
             <div class="col-md-6">
                 <div class="card dashboard-card">
                     <div class="card-header">
-                        Card Countries
+                        Top Countries
                     </div>
                     <div class="card-body">
                         <div class="chart-container">
@@ -192,15 +213,18 @@
             </div>
         </div>
 
-        <!-- BIN Data Table -->
-        <div class="row mb-4">
-            <div class="col-md-12">
+        <!-- Data Table -->
+        <div class="row mb-4" id="bins-table">
+            <div class="col-12">
                 <div class="card dashboard-card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <div>BIN Database</div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="show-patched-bins" checked>
-                            <label class="form-check-label" for="show-patched-bins">Show Patched BINs</label>
+                        <span>Exploited BINs Data</span>
+                        <div class="d-flex align-items-center">
+                            <button id="generate-more-bins" class="btn btn-primary me-3">Generate 100 More BINs</button>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="show-patched-bins" checked>
+                                <label class="form-check-label" for="show-patched-bins">Show Patched BINs</label>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
@@ -232,8 +256,11 @@
                                 <span class="visually-hidden">Loading...</span>
                             </div>
                         </div>
+                        <!-- Pagination Controls -->
                         <div class="d-flex justify-content-between align-items-center mt-3">
-                            <span id="pagination-info">Showing 0-0 of 0 BINs</span>
+                            <div id="pagination-info" class="text-muted">
+                                Showing 0-0 of 0 BINs
+                            </div>
                             <nav aria-label="BIN data pagination">
                                 <ul class="pagination" id="pagination-controls">
                                     <!-- Pagination will be generated here -->
@@ -244,59 +271,20 @@
                 </div>
             </div>
         </div>
-
-        <!-- Actions Row -->
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card dashboard-card">
-                    <div class="card-header">
-                        Generate More BINs
-                    </div>
-                    <div class="card-body">
-                        <p>Generate and verify additional BINs from major card networks. BINs are verified using the Neutrino API.</p>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="form-group me-3">
-                                <label for="bin-count" class="form-label">Number of BINs to generate:</label>
-                                <input type="number" class="form-control" id="bin-count" value="5" min="1" max="20">
-                            </div>
-                            <button id="generate-bins-btn" class="btn btn-primary">
-                                <i class="bi bi-plus-circle"></i> Generate BINs
-                            </button>
-                        </div>
-                        <div class="mt-3" id="generation-result"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card dashboard-card">
-                    <div class="card-header">
-                        Refresh Data
-                    </div>
-                    <div class="card-body">
-                        <p>Refresh the BIN intelligence data by scanning for new exploited BINs from fraud feeds.</p>
-                        <button id="refresh-data-btn" class="btn btn-success">
-                            <i class="bi bi-arrow-clockwise"></i> Refresh Data
-                        </button>
-                        <div class="mt-3" id="refresh-result"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
-    <!-- Bootstrap JS -->
+    <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- Dashboard JavaScript -->
+    
     <script>
-        // Chart variables
-        let exploitTypesChart, threedsChart, brandsChart, countriesChart;
-        
         // Chart colors
         const chartColors = [
-            '#4285F4', '#DB4437', '#F4B400', '#0F9D58', '#7651b2', 
-            '#3aa0d1', '#654321', '#ff6ec7', '#4B0082', '#FFA500'
+            '#4dc9f6', '#f67019', '#f53794', '#537bc4', '#acc236',
+            '#166a8f', '#00a950', '#58595b', '#8549ba', '#e6194b'
         ];
+
+        // Initialize empty charts
+        let exploitTypesChart, threedsChart, brandsChart, countriesChart;
 
         // Show loading spinners
         document.getElementById('exploit-spinner').style.display = 'flex';
@@ -330,20 +318,16 @@
                         binsData.forEach(bin => {
                             if (bin.issuer) uniqueIssuers.add(bin.issuer);
                         });
-                        document.getElementById('issuers-stat').textContent = uniqueIssuers.size;
-                    })
-                    .catch(error => {
-                        console.error('Error fetching BIN data for issuer count:', error);
-                        document.getElementById('issuers-stat').textContent = 'N/A';
+                        document.getElementById('unique-issuers-stat').textContent = uniqueIssuers.size;
                     });
 
                 // Create Exploit Types chart
-                const exploitCtx = document.getElementById('exploit-types-chart').getContext('2d');
+                const exploitTypesCtx = document.getElementById('exploit-types-chart').getContext('2d');
                 const exploitLabels = Object.keys(data.exploit_types);
                 const exploitValues = Object.values(data.exploit_types);
                 
-                exploitTypesChart = new Chart(exploitCtx, {
-                    type: 'doughnut',
+                exploitTypesChart = new Chart(exploitTypesCtx, {
+                    type: 'pie',
                     data: {
                         labels: exploitLabels,
                         datasets: [{
@@ -354,7 +338,12 @@
                     },
                     options: {
                         responsive: true,
-                        maintainAspectRatio: false
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            }
+                        }
                     }
                 });
 
@@ -364,18 +353,27 @@
                 const threedsValues = Object.values(data['3ds_support']);
                 
                 threedsChart = new Chart(threedsCtx, {
-                    type: 'pie',
+                    type: 'doughnut',
                     data: {
                         labels: threedsLabels,
                         datasets: [{
                             data: threedsValues,
-                            backgroundColor: ['#0F9D58', '#4285F4', '#DB4437'],
+                            backgroundColor: [
+                                '#00a950',  // 3DS v1 - Green 
+                                '#4dc9f6',  // 3DS v2 - Blue
+                                '#f67019'   // No 3DS - Orange
+                            ],
                             borderWidth: 1
                         }]
                     },
                     options: {
                         responsive: true,
-                        maintainAspectRatio: false
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            }
+                        }
                     }
                 });
 
@@ -446,7 +444,7 @@
         let currentSortField = null;
         let currentSortDirection = null;
         let currentBinsData = []; // Store current page data for client-side sorting
-
+        
         // Function to load BIN data with pagination
         function loadBINData(page = 1) {
             // Show loading spinner
@@ -478,72 +476,13 @@
                     // Generate pagination controls
                     generatePagination(data.pagination);
                     
-                    // Populate table with data
-                    const tableBody = document.getElementById('bins-table-body');
-                    
-                    data.bins.forEach(bin => {
-                        const row = document.createElement('tr');
-                        row.dataset.patchStatus = bin.patch_status;
-                        row.dataset.brand = (bin.brand || '').toLowerCase();
-                        
-                        // Add class based on patch status
-                        if (bin.patch_status === 'Exploitable') {
-                            row.classList.add('table-danger');
-                        } else if (bin.patch_status === 'Patched') {
-                            row.classList.add('table-success');
-                        }
-                        
-                        // Check if this is a cross-border transaction
-                        const isCrossBorder = bin.transaction_country && bin.country && bin.transaction_country !== bin.country;
-                        
-                        // If exploit type is cross-border, highlight in a different color
-                        if (bin.exploit_type === 'cross-border') {
-                            row.classList.add('table-warning');
-                        }
-                        
-                        row.innerHTML = `
-                            <td>${bin.BIN}</td>
-                            <td>${bin.exploit_type || 'Unknown'}</td>
-                            <td>${bin.patch_status || 'Unknown'}</td>
-                            <td>${bin.issuer || 'Unknown'}</td>
-                            <td>${bin.brand || 'Unknown'}</td>
-                            <td>${bin.type || 'Unknown'}</td>
-                            <td>${bin.country || 'Unknown'}</td>
-                            <td>${isCrossBorder ? 
-                                `<span class="badge bg-warning text-dark" title="Cross-border transaction detected">${bin.transaction_country || 'Unknown'}</span>` : 
-                                (bin.transaction_country || '-')}
-                            </td>
-                            <td>${bin.threeDS1Supported ? '✓' : '✗'}</td>
-                            <td>${bin.threeDS2supported ? '✓' : '✗'}</td>
-                            <td>${bin.is_verified ? '<span class="badge bg-success">Verified</span>' : '<span class="badge bg-secondary">Not Verified</span>'}</td>
-                            <td>
-                                <button class="btn btn-sm btn-primary verify-bin-btn" data-bin="${bin.BIN}" title="Verify this BIN with Neutrino API to get real-world issuer, card type, and country information">
-                                    <i class="bi bi-shield-check"></i> Verify BIN
-                                </button>
-                                ${bin.is_verified ? `<small class="d-block text-muted mt-1">Source: ${bin.data_source}</small>` : ''}
-                            </td>
-                        `;
-                        tableBody.appendChild(row);
-                    });
-                    
-                    // Apply filter for patched BINs
-                    const showPatched = document.getElementById('show-patched-bins').checked;
-                    if (!showPatched) {
-                        const patchedRows = document.querySelectorAll('tr[data-patch-status="Patched"]');
-                        patchedRows.forEach(row => {
-                            row.style.display = 'none';
-                        });
+                    // Apply sorting if we have an active sort
+                    if (currentSortField && currentSortDirection) {
+                        sortBinsData(currentSortField, currentSortDirection);
+                    } else {
+                        // Populate table with unsorted data
+                        renderBinsTable(currentBinsData);
                     }
-                    
-                    // Filter out non-major brand cards (only show Visa, MasterCard, Amex, Discover)
-                    const majorBrands = ['visa', 'mastercard', 'american express', 'amex', 'discover'];
-                    document.querySelectorAll('tr[data-brand]').forEach(row => {
-                        const brand = row.getAttribute('data-brand').toLowerCase();
-                        // Hide any row with a brand not in our major brands list
-                        if (!majorBrands.some(majorBrand => brand.includes(majorBrand))) {
-                            row.style.display = 'none';
-                        }
-                    });
                 })
                 .catch(error => {
                     console.error('Error fetching BIN data:', error);
@@ -582,68 +521,16 @@
                 });
         }
         
-        // Function to sort BINs data
-        function sortBINData(field, direction) {
-            // Show loading spinner
-            document.getElementById('table-spinner').style.display = 'flex';
-            
-            // Remove sort indicators from all column headers
-            document.querySelectorAll('.sortable').forEach(th => {
-                th.removeAttribute('data-sort-dir');
-            });
-            
-            // Add sort indicator to current column header
-            const currentSortHeader = document.querySelector(`.sortable[data-sort-field="${field}"]`);
-            if (currentSortHeader) {
-                currentSortHeader.setAttribute('data-sort-dir', direction);
-            }
-            
-            // Store current sort state
-            currentSortField = field;
-            currentSortDirection = direction;
-            
-            // Sort the data
-            currentBinsData.sort((a, b) => {
-                let valueA = a[field];
-                let valueB = b[field];
-                
-                // Handle null or undefined values
-                if (valueA === null || valueA === undefined) valueA = '';
-                if (valueB === null || valueB === undefined) valueB = '';
-                
-                // Convert to lowercase if strings for case-insensitive comparison
-                if (typeof valueA === 'string') valueA = valueA.toLowerCase();
-                if (typeof valueB === 'string') valueB = valueB.toLowerCase();
-                
-                // For boolean values, true should come first for ascending
-                if (typeof valueA === 'boolean') {
-                    if (valueA === valueB) return 0;
-                    
-                    if (direction === 'asc') {
-                        return valueA ? -1 : 1; // True comes before false
-                    } else {
-                        return valueA ? 1 : -1; // False comes before true
-                    }
-                }
-                
-                // For numeric values
-                if (!isNaN(valueA) && !isNaN(valueB)) {
-                    return direction === 'asc' ? valueA - valueB : valueB - valueA;
-                }
-                
-                // For strings
-                if (valueA < valueB) return direction === 'asc' ? -1 : 1;
-                if (valueA > valueB) return direction === 'asc' ? 1 : -1;
-                return 0;
-            });
-            
-            // Clear the table
+        // Function to render the BINs table with the current data
+        function renderBinsTable(binsData) {
             const tableBody = document.getElementById('bins-table-body');
             tableBody.innerHTML = '';
             
-            // Populate table with sorted data
-            currentBinsData.forEach(bin => {
+            // Populate table
+            binsData.forEach(bin => {
                 const row = document.createElement('tr');
+                
+                // Add data attributes for filtering
                 row.dataset.patchStatus = bin.patch_status;
                 row.dataset.brand = (bin.brand || '').toLowerCase();
                 
@@ -686,7 +573,7 @@
                 `;
                 tableBody.appendChild(row);
             });
-            
+                
             // Apply filter for patched BINs
             const showPatched = document.getElementById('show-patched-bins').checked;
             if (!showPatched) {
@@ -705,9 +592,86 @@
                     row.style.display = 'none';
                 }
             });
+        }
+        
+        // Function to sort BINs data
+        function sortBinsData(field, direction) {
+            // Remove sort indicators from all columns
+            document.querySelectorAll('.sortable').forEach(th => {
+                th.removeAttribute('data-sort-dir');
+            });
             
-            // Hide loading spinner
-            document.getElementById('table-spinner').style.display = 'none';
+            // Set sort indicator on current column
+            const currentSortHeader = document.querySelector(`.sortable[data-sort-field="${field}"]`);
+            if (currentSortHeader) {
+                currentSortHeader.setAttribute('data-sort-dir', direction);
+            }
+            
+            // Store current sort state
+            currentSortField = field;
+            currentSortDirection = direction;
+            
+            // Sort the data
+            const sortedData = [...currentBinsData].sort((a, b) => {
+                let valueA = a[field];
+                let valueB = b[field];
+                
+                // Handle null or undefined values
+                if (valueA === null || valueA === undefined) valueA = '';
+                if (valueB === null || valueB === undefined) valueB = '';
+                
+                // Convert to lowercase if strings
+                if (typeof valueA === 'string') valueA = valueA.toLowerCase();
+                if (typeof valueB === 'string') valueB = valueB.toLowerCase();
+                
+                // For boolean fields, true should be first for asc sort
+                if (typeof valueA === 'boolean') {
+                    return direction === 'asc' 
+                        ? (valueA === valueB ? 0 : valueA ? -1 : 1) 
+                        : (valueA === valueB ? 0 : valueA ? 1 : -1);
+                }
+                
+                // Standard comparison
+                if (valueA < valueB) return direction === 'asc' ? -1 : 1;
+                if (valueA > valueB) return direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+            
+            // Render the sorted data
+            renderBinsTable(sortedData);
+        }
+                    
+                    const tableBody = document.getElementById('bins-table-body');
+                    const row = document.createElement('tr');
+                    
+                    // Check if API returned structured error response
+                    if (error.response && error.response.bins) {
+                        // API returned structured response with empty bins
+                        row.innerHTML = `<td colspan="12" class="text-center">
+                            <div class="alert alert-warning">
+                                <strong>Database Error:</strong> The system encountered an error loading BIN data.
+                                <br>Our developers have been notified and are working on a fix.
+                                <br><small>Technical details: ${error.response.detail || 'Unknown error'}</small>
+                                <br><button class="btn btn-sm btn-primary mt-2" onclick="loadBINData()">Try Again</button>
+                            </div>
+                        </td>`;
+                    } else {
+                        // Generic error (network error, etc)
+                        row.innerHTML = `<td colspan="12" class="text-center">
+                            <div class="alert alert-danger">
+                                <strong>Connection Error:</strong> Could not load BIN data.
+                                <br>Please check your network connection and try refreshing the page.
+                                <br><button class="btn btn-sm btn-primary mt-2" onclick="loadBINData()">Try Again</button>
+                            </div>
+                        </td>`;
+                    }
+                    
+                    tableBody.appendChild(row);
+                    
+                    // Reset pagination info
+                    document.getElementById('pagination-info').textContent = 'Showing 0-0 of 0 BINs';
+                    document.getElementById('pagination-controls').innerHTML = '';
+                });
         }
         
         // Function to generate pagination controls
@@ -715,84 +679,72 @@
             const paginationContainer = document.getElementById('pagination-controls');
             paginationContainer.innerHTML = '';
             
-            // Don't show pagination if there's only one page
-            if (pagination.total_pages <= 1) return;
+            // Only show pagination if we have more than one page
+            if (pagination.total_pages <= 1) {
+                return;
+            }
             
-            // Previous page button
+            // Previous button
             const prevLi = document.createElement('li');
             prevLi.className = `page-item ${pagination.current_page === 1 ? 'disabled' : ''}`;
-            
             const prevLink = document.createElement('a');
             prevLink.className = 'page-link';
             prevLink.href = '#';
+            prevLink.textContent = 'Previous';
             prevLink.setAttribute('aria-label', 'Previous');
-            prevLink.innerHTML = '<span aria-hidden="true">&laquo;</span>';
-            
             if (pagination.current_page > 1) {
                 prevLink.addEventListener('click', (e) => {
                     e.preventDefault();
                     loadBINData(pagination.current_page - 1);
                 });
             }
-            
             prevLi.appendChild(prevLink);
             paginationContainer.appendChild(prevLi);
             
-            // Page number buttons
-            const maxVisiblePages = 5;
-            let startPage = Math.max(1, pagination.current_page - Math.floor(maxVisiblePages / 2));
-            let endPage = Math.min(pagination.total_pages, startPage + maxVisiblePages - 1);
-            
-            // Adjust startPage if we are near the end
-            if (endPage === pagination.total_pages) {
-                startPage = Math.max(1, endPage - maxVisiblePages + 1);
-            }
+            // Page numbers
+            const maxPages = 5; // Maximum number of page links to show
+            const startPage = Math.max(1, pagination.current_page - Math.floor(maxPages / 2));
+            const endPage = Math.min(pagination.total_pages, startPage + maxPages - 1);
             
             for (let i = startPage; i <= endPage; i++) {
                 const pageLi = document.createElement('li');
                 pageLi.className = `page-item ${i === pagination.current_page ? 'active' : ''}`;
-                
                 const pageLink = document.createElement('a');
                 pageLink.className = 'page-link';
                 pageLink.href = '#';
-                pageLink.textContent = i;
-                
-                pageLink.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    if (i !== pagination.current_page) {
+                pageLink.textContent = i.toString();
+                if (i !== pagination.current_page) {
+                    pageLink.addEventListener('click', (e) => {
+                        e.preventDefault();
                         loadBINData(i);
-                    }
-                });
-                
+                    });
+                }
                 pageLi.appendChild(pageLink);
                 paginationContainer.appendChild(pageLi);
             }
             
-            // Next page button
+            // Next button
             const nextLi = document.createElement('li');
             nextLi.className = `page-item ${pagination.current_page === pagination.total_pages ? 'disabled' : ''}`;
-            
             const nextLink = document.createElement('a');
             nextLink.className = 'page-link';
             nextLink.href = '#';
+            nextLink.textContent = 'Next';
             nextLink.setAttribute('aria-label', 'Next');
-            nextLink.innerHTML = '<span aria-hidden="true">&raquo;</span>';
-            
             if (pagination.current_page < pagination.total_pages) {
                 nextLink.addEventListener('click', (e) => {
                     e.preventDefault();
                     loadBINData(pagination.current_page + 1);
                 });
             }
-            
             nextLi.appendChild(nextLink);
             paginationContainer.appendChild(nextLi);
         }
-
+        
         // Initial load of BIN data
         loadBINData();
-
-        // Set up sorting when clicking on column headers
+        
+        // Add click event listeners to sortable column headers
         document.querySelectorAll('.sortable').forEach(header => {
             header.addEventListener('click', function() {
                 const field = this.getAttribute('data-sort-field');
@@ -803,8 +755,8 @@
                     direction = currentSortDirection === 'asc' ? 'desc' : 'asc';
                 }
                 
-                // Sort the data
-                sortBINData(field, direction);
+                // Sort the table
+                sortBinsData(field, direction);
             });
         });
 
@@ -815,219 +767,105 @@
                 row.style.display = this.checked ? '' : 'none';
             });
         });
-
-        // Verify BIN button click handler
-        document.addEventListener('click', function(e) {
-            if (e.target.closest('.verify-bin-btn')) {
-                const button = e.target.closest('.verify-bin-btn');
-                const bin = button.getAttribute('data-bin');
-                
-                button.disabled = true;
-                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Verifying...';
-                
-                fetch(`/verify-bin/${bin}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        // Re-enable button
-                        button.disabled = false;
-                        button.innerHTML = '<i class="bi bi-shield-check"></i> Verify BIN';
-                        
-                        if (data.error) {
-                            alert(`Error verifying BIN: ${data.error}`);
-                        } else {
-                            // Replace the current row with updated data
-                            const row = button.closest('tr');
-                            
-                            // Check if this is a cross-border transaction
-                            const isCrossBorder = data.transaction_country && data.country && data.transaction_country !== data.country;
-                            
-                            // Update row classes based on new data
-                            row.className = ''; // Clear existing classes
-                            
-                            if (data.patch_status === 'Exploitable') {
-                                row.classList.add('table-danger');
-                            } else if (data.patch_status === 'Patched') {
-                                row.classList.add('table-success');
-                            }
-                            
-                            if (data.exploit_type === 'cross-border') {
-                                row.classList.add('table-warning');
-                            }
-                            
-                            // Update row data attributes
-                            row.dataset.patchStatus = data.patch_status;
-                            row.dataset.brand = (data.brand || '').toLowerCase();
-                            
-                            // Update row HTML
-                            row.innerHTML = `
-                                <td>${data.BIN}</td>
-                                <td>${data.exploit_type || 'Unknown'}</td>
-                                <td>${data.patch_status || 'Unknown'}</td>
-                                <td>${data.issuer || 'Unknown'}</td>
-                                <td>${data.brand || 'Unknown'}</td>
-                                <td>${data.type || 'Unknown'}</td>
-                                <td>${data.country || 'Unknown'}</td>
-                                <td>${isCrossBorder ? 
-                                    `<span class="badge bg-warning text-dark" title="Cross-border transaction detected">${data.transaction_country || 'Unknown'}</span>` : 
-                                    (data.transaction_country || '-')}
-                                </td>
-                                <td>${data.threeDS1Supported ? '✓' : '✗'}</td>
-                                <td>${data.threeDS2supported ? '✓' : '✗'}</td>
-                                <td><span class="badge bg-success">Verified</span></td>
-                                <td>
-                                    <button class="btn btn-sm btn-primary verify-bin-btn" data-bin="${data.BIN}" title="Verify this BIN with Neutrino API to get real-world issuer, card type, and country information">
-                                        <i class="bi bi-shield-check"></i> Verify BIN
-                                    </button>
-                                    <small class="d-block text-muted mt-1">Source: ${data.data_source}</small>
-                                </td>
-                            `;
-                            
-                            // Show success message
-                            alert(`BIN ${bin} verified successfully: ${data.issuer} ${data.brand} ${data.type} card from ${data.country}`);
-                            
-                            // Filter again if needed (for patched/non-major brands)
-                            const showPatched = document.getElementById('show-patched-bins').checked;
-                            if (!showPatched && data.patch_status === 'Patched') {
-                                row.style.display = 'none';
-                            }
-                            
-                            const majorBrands = ['visa', 'mastercard', 'american express', 'amex', 'discover'];
-                            const brand = (data.brand || '').toLowerCase();
-                            if (!majorBrands.some(majorBrand => brand.includes(majorBrand))) {
-                                row.style.display = 'none';
-                            }
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        button.disabled = false;
-                        button.innerHTML = '<i class="bi bi-shield-check"></i> Verify BIN';
-                        alert('Error verifying BIN. Please try again.');
-                    });
-            }
-        });
-
-        // Generate BINs button click handler
-        document.getElementById('generate-bins-btn').addEventListener('click', function() {
-            const count = document.getElementById('bin-count').value;
-            const generateResult = document.getElementById('generation-result');
+        
+        // Generate more BINs button
+        document.getElementById('generate-more-bins').addEventListener('click', function(e) {
+            e.preventDefault();
             
-            // Validate input
-            if (count < 1 || count > 20) {
-                generateResult.innerHTML = '<div class="alert alert-danger">Please enter a number between 1 and 20.</div>';
-                return;
-            }
-            
-            // Disable button during API call
+            // Disable button to prevent multiple clicks
             this.disabled = true;
             this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generating...';
             
-            generateResult.innerHTML = '<div class="alert alert-info">Generating and verifying BINs... This may take a moment.</div>';
+            // Show loading spinner for table
+            document.getElementById('table-spinner').style.display = 'flex';
             
-            fetch(`/generate-bins?count=${count}`)
-                .then(response => response.json())
-                .then(data => {
-                    // Re-enable button
-                    this.disabled = false;
-                    this.innerHTML = '<i class="bi bi-plus-circle"></i> Generate BINs';
-                    
-                    if (data.error) {
-                        generateResult.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
-                    } else {
-                        // Show success message
-                        generateResult.innerHTML = `
-                            <div class="alert alert-success">
-                                <strong>Success!</strong> Generated ${data.bins.length} new BINs.
-                                <ul class="mt-2 mb-0">
-                                    ${data.bins.map(bin => `<li>${bin.BIN}: ${bin.issuer} ${bin.brand} (${bin.patch_status})</li>`).join('')}
-                                </ul>
-                            </div>
-                        `;
-                        
-                        // Reload BIN data to show new BINs
-                        loadBINData(1);
-                        
-                        // Update charts
-                        fetch('/api/stats')
-                            .then(response => response.json())
-                            .then(statsData => {
-                                // Update summary stats
-                                document.getElementById('total-bins-stat').textContent = statsData.total_bins;
-                                document.getElementById('exploitable-bins-stat').textContent = statsData.patch_status.Exploitable || 0;
-                                document.getElementById('patched-bins-stat').textContent = statsData.patch_status.Patched || 0;
-                                
-                                // Update charts
-                                updateCharts(statsData);
-                            })
-                            .catch(error => {
-                                console.error('Error updating stats after BIN generation:', error);
-                            });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    this.disabled = false;
-                    this.innerHTML = '<i class="bi bi-plus-circle"></i> Generate BINs';
-                    generateResult.innerHTML = '<div class="alert alert-danger">Error generating BINs. Please try again.</div>';
-                });
-        });
-
-        // Refresh Data button click handler
-        document.getElementById('refresh-data-btn').addEventListener('click', function() {
-            const refreshResult = document.getElementById('refresh-result');
+            // Counter variables for batched generation
+            let batchSize = 20;
+            let totalBatches = 5; // 5 batches of 20 = 100 BINs
+            let completedBatches = 0;
+            let totalCreated = 0;
+            let totalUpdated = 0;
+            let currentTotal = 0;
+            let hadError = false;
             
-            // Disable button during API call
-            this.disabled = true;
-            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...';
+            const button = this;
             
-            refreshResult.innerHTML = '<div class="alert alert-info">Refreshing BIN intelligence data... This may take a moment.</div>';
+            // Function to generate BINs in batches
+            function generateBatch() {
+                if (completedBatches >= totalBatches || hadError) {
+                    // All batches processed or error occurred
+                    finishOperation();
+                    return;
+                }
+                
+                // Update button text to show progress
+                button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generating... (${completedBatches * batchSize}/${totalBatches * batchSize})`;
+                
+                // Call generate endpoint for a single batch
+                fetch(`/generate-bins?count=${batchSize}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            // Increment counters
+                            completedBatches++;
+                            totalCreated += data.new_bins;
+                            totalUpdated += data.updated_bins;
+                            currentTotal = data.total_bins;
+                            
+                            // Continue with next batch
+                            generateBatch();
+                        } else {
+                            // Error occurred
+                            console.error('Error generating BINs:', data.message);
+                            hadError = true;
+                            alert(`Error generating BINs: ${data.message || 'Unknown error'}`);
+                            finishOperation();
+                        }
+                    })
+                    .catch(error => {
+                        // Error occurred
+                        console.error('Error generating BINs:', error);
+                        hadError = true;
+                        alert('Error generating BINs. Please try again.');
+                        finishOperation();
+                    });
+            }
             
-            fetch('/refresh-data')
-                .then(response => response.json())
-                .then(data => {
-                    // Re-enable button
-                    this.disabled = false;
-                    this.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh Data';
-                    
-                    if (data.error) {
-                        refreshResult.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
-                    } else {
-                        // Show success message
-                        refreshResult.innerHTML = `
-                            <div class="alert alert-success">
-                                <strong>Success!</strong> Refreshed BIN intelligence data.
-                                <p>Found ${data.bins_found} BINs, classified ${data.bins_classified} BINs.</p>
-                            </div>
-                        `;
-                        
-                        // Reload BIN data to show new BINs
-                        loadBINData(1);
+            // Function to finish the operation
+            function finishOperation() {
+                // Enable button
+                button.disabled = false;
+                button.textContent = 'Generate 100 More BINs';
+                
+                if (!hadError) {
+                    // Show success message
+                    alert(`Successfully generated ${totalCreated} new BINs, updated ${totalUpdated} existing. Total: ${currentTotal} BINs.`);
+                }
+                
+                // Reload current page of BIN data to show new BINs
+                loadBINData(currentPage);
+                
+                // Reload stats to update dashboard
+                fetch('/api/stats')
+                    .then(response => response.json())
+                    .then(statsData => {
+                        // Update summary stats
+                        document.getElementById('total-bins-stat').textContent = statsData.total_bins;
+                        document.getElementById('exploitable-bins-stat').textContent = statsData.patch_status.Exploitable || 0;
+                        document.getElementById('patched-bins-stat').textContent = statsData.patch_status.Patched || 0;
                         
                         // Update charts
-                        fetch('/api/stats')
-                            .then(response => response.json())
-                            .then(statsData => {
-                                // Update summary stats
-                                document.getElementById('total-bins-stat').textContent = statsData.total_bins;
-                                document.getElementById('exploitable-bins-stat').textContent = statsData.patch_status.Exploitable || 0;
-                                document.getElementById('patched-bins-stat').textContent = statsData.patch_status.Patched || 0;
-                                
-                                // Update charts
-                                updateCharts(statsData);
-                            })
-                            .catch(error => {
-                                console.error('Error updating stats after data refresh:', error);
-                            });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    this.disabled = false;
-                    this.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh Data';
-                    refreshResult.innerHTML = '<div class="alert alert-danger">Error refreshing data. Please try again.</div>';
-                });
+                        updateCharts(statsData);
+                    });
+                
+                // Hide loading spinner
+                document.getElementById('table-spinner').style.display = 'none';
+            }
+            
+            // Start generating batches
+            generateBatch();
         });
-
+        
         // Function to update charts with new data
         function updateCharts(data) {
             // Update Exploit Types chart
@@ -1062,6 +900,99 @@
             countriesChart.data.datasets[0].data = countryValues;
             countriesChart.update();
         }
+
+        // Event listener for verify bin buttons - use event delegation
+        document.addEventListener('click', function(e) {
+            // Check if the clicked element has the verify-bin-btn class
+            if (e.target && e.target.classList.contains('verify-bin-btn')) {
+                e.preventDefault();
+                
+                // Get the BIN from the data attribute
+                const binCode = e.target.getAttribute('data-bin');
+                if (!binCode) return;
+                
+                // Disable button and show loading state
+                e.target.disabled = true;
+                e.target.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Verifying...';
+                
+                // Call the verify endpoint
+                fetch(`/verify-bin/${binCode}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            // Show detailed success message
+                            const binData = data.data;
+                            alert(`BIN ${binCode} verified successfully with Neutrino API.\n\n` +
+                                  `Card Type: ${binData.type}\n` + 
+                                  `Brand: ${binData.brand}\n` +
+                                  `Issuer: ${binData.issuer}\n` + 
+                                  `Country: ${binData.country}\n` +
+                                  `3DS Support: ${binData.threeDS1Supported || binData.threeDS2supported ? 'Yes' : 'No'}`);
+                            
+                            // Reload current page of BIN data to show updated verification status
+                            loadBINData(currentPage);
+                        } else {
+                            // Show error message
+                            alert(`Error verifying BIN ${binCode}: ${data.message || 'Unknown error'}`);
+                            
+                            // Re-enable the button
+                            e.target.disabled = false;
+                            e.target.textContent = 'Verify with Neutrino';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error verifying BIN:', error);
+                        
+                        // Show error message
+                        alert(`Error verifying BIN ${binCode}. Please try again.`);
+                        
+                        // Re-enable the button
+                        e.target.disabled = false;
+                        e.target.textContent = 'Verify with Neutrino';
+                    });
+            }
+        });
+
+        // Refresh data
+        document.getElementById('refresh-data').addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Show confirmation dialog
+            if (confirm('This will refresh all BIN data by running the BIN Intelligence System. This may take some time. Continue?')) {
+                // Show loading spinners
+                document.getElementById('exploit-spinner').style.display = 'flex';
+                document.getElementById('threeds-spinner').style.display = 'flex';
+                document.getElementById('brands-spinner').style.display = 'flex';
+                document.getElementById('countries-spinner').style.display = 'flex';
+                document.getElementById('table-spinner').style.display = 'flex';
+                
+                // Clear table
+                document.getElementById('bins-table-body').innerHTML = '';
+                
+                // Destroy existing charts
+                exploitTypesChart.destroy();
+                threedsChart.destroy();
+                brandsChart.destroy();
+                countriesChart.destroy();
+                
+                // Refresh data
+                fetch('/refresh')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            alert(`Data refreshed successfully! Found ${data.bins_count} BINs.`);
+                            // Reload page to display new data
+                            window.location.reload();
+                        } else {
+                            alert('Error refreshing data. Please try again.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error refreshing data:', error);
+                        alert('Error refreshing data. Please try again.');
+                    });
+            }
+        });
     </script>
 </body>
 </html>
