@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Tuple
 from collections import Counter
 from flask import Flask, render_template, jsonify, request
 from sqlalchemy import create_engine, func
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker, scoped_session, contains_eager
 
 from fraud_feed import FraudFeedScraper
 from bin_enricher import BinEnricher
@@ -349,56 +349,59 @@ def index():
     return render_template('dashboard.html')
 
 def get_bins_from_database():
-    """Query BINs from the database"""
+    """Query BINs from the database using optimized join query"""
     try:
-        # Get all BINs from database
-        bin_records = db_session.query(BIN).all()
+        # Use a single optimized query with LEFT JOIN to get all data at once
+        # This replaces multiple individual queries with one efficient query
+        results = db_session.query(
+            BIN,
+            ExploitType.name.label('exploit_type_name')
+        ).outerjoin(
+            BINExploit, BIN.id == BINExploit.bin_id
+        ).outerjoin(
+            ExploitType, BINExploit.exploit_type_id == ExploitType.id
+        ).options(
+            # These options reduce the number of queries needed
+            contains_eager(BIN.exploits).contains_eager(BINExploit.exploit_type)
+        ).all()
         
-        # Convert to list of dictionaries
-        bins_data = []
-        for bin_record in bin_records:
-            # Get the primary exploit type for this BIN
-            try:
-                exploit_record = db_session.query(BINExploit, ExploitType) \
-                    .join(ExploitType) \
-                    .filter(BINExploit.bin_id == bin_record.id) \
-                    .order_by(BINExploit.frequency.desc()) \
-                    .first()
+        # Process results into a dictionary keyed by BIN code for deduplication
+        bins_dict = {}
+        for bin_record, exploit_type_name in results:
+            # Only process each BIN once
+            if bin_record.bin_code not in bins_dict:
+                # Handle datetime conversion
+                verified_at_str = None
+                if bin_record.verified_at is not None:
+                    try:
+                        verified_at_str = bin_record.verified_at.isoformat()
+                    except:
+                        pass
                 
-                exploit_type = exploit_record[1].name if exploit_record else None
-            except Exception as ex:
-                logger.warning(f"Error getting exploit type for BIN {bin_record.bin_code}: {str(ex)}")
-                exploit_type = None
-            
-            # Handle datetime conversion outside the dict
-            verified_at_str = None
-            if bin_record.verified_at is not None:
-                try:
-                    verified_at_str = bin_record.verified_at.isoformat()
-                except:
-                    pass
-            
-            bin_data = {
-                "BIN": bin_record.bin_code,
-                "issuer": bin_record.issuer,
-                "brand": bin_record.brand,
-                "type": bin_record.card_type,
-                "prepaid": bin_record.prepaid,
-                "country": bin_record.country,
-                "transaction_country": bin_record.transaction_country,
-                "threeDS1Supported": bin_record.threeds1_supported,
-                "threeDS2supported": bin_record.threeds2_supported,
-                "patch_status": bin_record.patch_status,
-                "exploit_type": exploit_type,
-                "is_verified": bin_record.is_verified,
-                "data_source": bin_record.data_source,
-                "issuer_website": bin_record.issuer_website,
-                "issuer_phone": bin_record.issuer_phone,
-                "verified_at": verified_at_str
-            }
-            bins_data.append(bin_data)
+                # Create the dictionary record
+                bins_dict[bin_record.bin_code] = {
+                    "BIN": bin_record.bin_code,
+                    "issuer": bin_record.issuer,
+                    "brand": bin_record.brand,
+                    "type": bin_record.card_type,
+                    "prepaid": bin_record.prepaid,
+                    "country": bin_record.country,
+                    "transaction_country": bin_record.transaction_country,
+                    "threeDS1Supported": bin_record.threeds1_supported,
+                    "threeDS2supported": bin_record.threeds2_supported,
+                    "patch_status": bin_record.patch_status,
+                    "exploit_type": exploit_type_name,  # From the joined query
+                    "is_verified": bin_record.is_verified,
+                    "data_source": bin_record.data_source,
+                    "issuer_website": bin_record.issuer_website,
+                    "issuer_phone": bin_record.issuer_phone,
+                    "verified_at": verified_at_str
+                }
         
-        logger.info(f"Loaded {len(bins_data)} BINs from database")
+        # Convert dictionary to list
+        bins_data = list(bins_dict.values())
+        
+        logger.info(f"Loaded {len(bins_data)} BINs from database using optimized query")
         return bins_data
         
     except Exception as e:
