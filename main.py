@@ -247,16 +247,48 @@ def run_bin_intelligence_system(top_n=100, sample_pages=5):
 
 def load_bin_data():
     """Load BIN data from database, ignoring any old JSON files"""
-    # Prioritize database data and skip loading from JSON files (they may contain synthetic data)
-    bins_data = get_bins_from_database()
+    try:
+        # Direct database query to avoid calling get_bins_from_database which might cause a loop
+        bin_records = db_session.query(BIN).all()
+        
+        # Convert to list of dictionaries
+        bins_data = []
+        for bin_record in bin_records:
+            try:
+                # Get the primary exploit type for this BIN using a direct query
+                exploit_record = db_session.query(BINExploit, ExploitType) \
+                    .join(ExploitType) \
+                    .filter(BINExploit.bin_id == bin_record.id) \
+                    .order_by(BINExploit.frequency.desc()) \
+                    .first()
+                    
+                exploit_type = exploit_record[1].name if exploit_record else None
+            except Exception:
+                exploit_type = None
+                
+            # Create a simplified record with only essential fields
+            bin_data = {
+                "BIN": bin_record.bin_code,
+                "issuer": bin_record.issuer,
+                "brand": bin_record.brand,
+                "type": bin_record.card_type,
+                "country": bin_record.country,
+                "transaction_country": bin_record.transaction_country,
+                "threeDS1Supported": bin_record.threeds1_supported,
+                "threeDS2supported": bin_record.threeds2_supported,
+                "patch_status": bin_record.patch_status,
+                "exploit_type": exploit_type
+            }
+            bins_data.append(bin_data)
+            
+        if bins_data:
+            logger.info(f"Loaded {len(bins_data)} BINs from database directly")
+            return bins_data
+    except Exception as e:
+        logger.error(f"Direct database load failed: {str(e)}")
     
-    # If we have data in the database, use it
-    if bins_data:
-        logger.info(f"Loaded {len(bins_data)} BINs from database")
-        return bins_data
-      
-    # Database is empty, don't try to use any old files - return empty list
-    logger.info("No BINs in database - returning empty dataset")
+    # If we got here, there was an error or database is empty
+    logger.info("No BINs in database or error occurred - returning empty dataset")
     return []
 
 def get_bin_statistics(bins_data):
@@ -326,13 +358,17 @@ def get_bins_from_database():
         bins_data = []
         for bin_record in bin_records:
             # Get the primary exploit type for this BIN
-            exploit_record = db_session.query(BINExploit, ExploitType) \
-                .join(ExploitType) \
-                .filter(BINExploit.bin_id == bin_record.id) \
-                .order_by(BINExploit.frequency.desc()) \
-                .first()
-            
-            exploit_type = exploit_record[1].name if exploit_record else None
+            try:
+                exploit_record = db_session.query(BINExploit, ExploitType) \
+                    .join(ExploitType) \
+                    .filter(BINExploit.bin_id == bin_record.id) \
+                    .order_by(BINExploit.frequency.desc()) \
+                    .first()
+                
+                exploit_type = exploit_record[1].name if exploit_record else None
+            except Exception as ex:
+                logger.warning(f"Error getting exploit type for BIN {bin_record.bin_code}: {str(ex)}")
+                exploit_type = None
             
             # Handle datetime conversion outside the dict
             verified_at_str = None
@@ -367,8 +403,8 @@ def get_bins_from_database():
         
     except Exception as e:
         logger.error(f"Error loading BINs from database: {str(e)}")
-        # Fallback to file if database query fails
-        return load_bin_data()
+        # Avoid recursive loop, return empty list instead of calling load_bin_data
+        return []
 
 def get_database_statistics():
     """Get statistics from the database"""
