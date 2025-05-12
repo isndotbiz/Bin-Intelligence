@@ -931,16 +931,14 @@
                     this.disabled = false;
                     this.innerHTML = '<i class="bi bi-plus-circle"></i> Generate BINs';
                     
-                    if (data.error) {
-                        generateResult.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                    if (data.status === 'error' || data.error || data.message) {
+                        generateResult.innerHTML = `<div class="alert alert-danger">${data.error || data.message || 'Unknown error occurred'}</div>`;
                     } else {
                         // Show success message
                         generateResult.innerHTML = `
                             <div class="alert alert-success">
-                                <strong>Success!</strong> Generated ${data.bins.length} new BINs.
-                                <ul class="mt-2 mb-0">
-                                    ${data.bins.map(bin => `<li>${bin.BIN}: ${bin.issuer} ${bin.brand} (${bin.patch_status})</li>`).join('')}
-                                </ul>
+                                <strong>Success!</strong> Generated ${data.new_bins || 0} new BINs.
+                                <p>Total BINs in the system: ${data.total_bins || 0}</p>
                             </div>
                         `;
                         
@@ -989,14 +987,16 @@
                     this.disabled = false;
                     this.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh Data';
                     
-                    if (data.error) {
-                        refreshResult.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                    if (data.status === 'error' || data.error) {
+                        refreshResult.innerHTML = `<div class="alert alert-danger">${data.error || 'Unknown error occurred'}</div>`;
                     } else {
                         // Show success message
                         refreshResult.innerHTML = `
                             <div class="alert alert-success">
                                 <strong>Success!</strong> Refreshed BIN intelligence data.
-                                <p>Total BINs in the system: ${data.bins_count}</p>
+                                <p>Total BINs in the system: ${data.bins_count || 0}</p>
+                                ${data.bins_found ? `<p>New BINs found: ${data.bins_found}</p>` : ''}
+                                ${data.bins_classified ? `<p>BINs classified: ${data.bins_classified}</p>` : ''}
                             </div>
                         `;
                         

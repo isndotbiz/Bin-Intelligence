@@ -889,11 +889,28 @@ def generate_more_bins():
 @app.route('/refresh')
 def refresh_data():
     """Force refresh of the data by running the BIN Intelligence System"""
-    top_n = int(request.args.get('top_n', 100))
-    sample_pages = int(request.args.get('sample_pages', 5))
-    
-    bins_data = run_bin_intelligence_system(top_n=top_n, sample_pages=sample_pages)
-    return jsonify({'status': 'success', 'bins_count': len(bins_data)})
+    try:
+        top_n = int(request.args.get('top_n', 100))
+        sample_pages = int(request.args.get('sample_pages', 5))
+        
+        # Process exploited BINs
+        logger.info("Running BIN Intelligence System to refresh data")
+        bins_data = run_bin_intelligence_system(top_n=top_n, sample_pages=sample_pages)
+        
+        # Get current database stats for more detailed response
+        bin_count = db_session.query(func.count(BIN.id)).scalar() or 0
+        exploited_count = db_session.query(func.count(BINExploit.id)).scalar() or 0
+        
+        return jsonify({
+            'status': 'success', 
+            'bins_count': bin_count,
+            'bins_found': len(bins_data),
+            'bins_classified': exploited_count,
+            'message': f"Successfully refreshed data with {len(bins_data)} BINs"
+        })
+    except Exception as e:
+        logger.error(f"Error refreshing data: {str(e)}")
+        return jsonify({'status': 'error', 'error': str(e)}), 500
 
 def main():
     """Main function to run the BIN Intelligence System"""
