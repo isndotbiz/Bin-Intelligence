@@ -159,6 +159,47 @@ class BinEnricher:
             # Default to not supported
             return False
     
+    def _check_auto_3ds_support(self, bin_code: str, bin_data: Dict[str, Any]) -> bool:
+        """
+        Check if the BIN supports automatic 3DS authentication without user intervention
+        
+        Args:
+            bin_code: The BIN number
+            bin_data: The BIN data from Neutrino API
+            
+        Returns:
+            Boolean indicating Auto 3DS support
+        """
+        # Get relevant data
+        brand = bin_data.get("brand", "").upper()
+        issuer = bin_data.get("issuer", "").upper()
+        country = bin_data.get("country", "").upper()
+        threeds2_supported = self._check_3ds2_support(bin_code, bin_data)
+        
+        # Auto 3DS is only available with 3DS2, so that's a prerequisite
+        if not threeds2_supported:
+            return False
+            
+        # Determine Auto 3DS support based on real-world adoption patterns
+        # Major issuers in specific countries have implemented the frictionless flow
+        major_issuers_with_auto_3ds = [
+            "CHASE", "BANK OF AMERICA", "CAPITAL ONE", "JPMORGAN", "CITI", "BARCLAYS",
+            "HSBC", "DEUTSCHE BANK", "BNP PARIBAS", "SANTANDER", "RBC", "SCOTIA",
+            "COMMONWEALTH BANK", "ANZ", "LLOYDS", "ROYAL BANK", "AMEX", "AMERICAN EXPRESS"
+        ]
+        
+        # Check if any major issuer name appears in the issuer field
+        issuer_supports_auto_3ds = any(major_issuer in issuer for major_issuer in major_issuers_with_auto_3ds)
+        
+        # Check combination of brand, country and issuer support
+        if brand in ["VISA", "MASTERCARD"] and country in ["US", "GB", "DE", "FR", "CA", "AU"] and issuer_supports_auto_3ds:
+            return True
+        elif brand == "AMERICAN EXPRESS" and country in ["US", "GB"]:
+            return True  # Amex generally has good Auto 3DS implementation
+            
+        # Default to no Auto 3DS support
+        return False
+    
     def _determine_patch_status(self, threeDS1Supported: bool, threeDS2supported: bool) -> str:
         """
         Determine the patch status based on 3DS support
