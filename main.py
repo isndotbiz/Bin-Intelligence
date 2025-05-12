@@ -864,7 +864,7 @@ def generate_more_bins():
                                 f"card from {card_country}, transaction in {transaction_country}")
                 else:
                     # For other BINs, assign one of our e-commerce relevant exploit types
-                    e_commerce_exploit_types = ["card-not-present", "false-positive-cvv"]
+                    e_commerce_exploit_types = ["card-not-present", "false-positive-cvv", "no-auto-3ds"]
                     bin_data["exploit_type"] = random.choice(e_commerce_exploit_types)
             
         # Save the verified BINs to the database

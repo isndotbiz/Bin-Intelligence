@@ -65,12 +65,21 @@ class BinEnricher:
         # Add 3DS support determination based on card brand and issuer
         bin_data["threeDS1Supported"] = self._check_3ds1_support(bin_code, bin_data)
         bin_data["threeDS2supported"] = self._check_3ds2_support(bin_code, bin_data)
+        bin_data["auto3DSSupported"] = self._check_auto_3ds_support(bin_code, bin_data)
         
         # Determine patch status based on 3DS support
         bin_data["patch_status"] = self._determine_patch_status(
             bin_data["threeDS1Supported"], 
             bin_data["threeDS2supported"]
         )
+        
+        # Determine the exploit type based on 3DS and Auto 3DS support
+        if not bin_data["auto3DSSupported"]:
+            bin_data["exploit_type"] = "no-auto-3ds"
+        else:
+            # For cards with auto 3DS support, default to card-not-present
+            # This can be overridden later for cross-border fraud
+            bin_data["exploit_type"] = "card-not-present"
         
         return bin_data
     

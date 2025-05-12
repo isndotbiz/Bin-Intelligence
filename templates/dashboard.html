@@ -173,6 +173,19 @@
                                         </div>
                                     </div>
                                 </div>
+                                
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#noAuto3DSCollapse" aria-expanded="false" aria-controls="noAuto3DSCollapse">
+                                            <strong>No Auto-3DS</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="noAuto3DSCollapse" class="accordion-collapse collapse" data-bs-parent="#exploitTypesAccordion">
+                                        <div class="accordion-body">
+                                            No Auto-3DS vulnerability identifies payment cards that lack support for automatic (frictionless) 3D Secure authentication, a critical security feature in modern e-commerce environments. While standard 3D Secure requires cardholders to complete an additional verification step which can disrupt the checkout flow and increase cart abandonment, Auto-3DS provides invisible risk-based authentication that happens in the background without user intervention. Cards lacking this capability are more susceptible to both fraud and false declines in e-commerce transactions. Our system identifies these BINs by analyzing their issuer support for the EMV 3DS 2.x protocol and frictionless authentication paths. The vulnerability is particularly prevalent in cards from smaller issuing banks or regions with delayed implementation of the latest 3DS standards. For merchants, transactions with these BINs represent a security-versus-conversion dilemma: either accept higher fraud potential by skipping authentication or increase checkout friction with full 3DS challenges. Our system recommends implementing adaptive authentication that only triggers visible challenges for truly high-risk transactions while silently authenticating others. This selective approach balances security and user experience, especially important for high-value transactions where cart abandonment is particularly costly.
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <p class="mt-3">BINs are classified by exploit type based on patterns observed in fraud feeds and authenticated data from Neutrino API. Cards without 3DS support (marked "Exploitable") are significantly more vulnerable to these attack vectors and should be prioritized for additional monitoring or reissuance.</p>
                         </div>
