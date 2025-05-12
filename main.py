@@ -565,6 +565,31 @@ def api_bins():
             }
         }), 500
 
+@app.route('/api/debug')
+def api_debug():
+    """Debug endpoint to check database connectivity"""
+    try:
+        # Count BINs in database
+        bin_count = db_session.query(func.count(BIN.id)).scalar()
+        # Count exploit types
+        exploit_count = db_session.query(func.count(ExploitType.id)).scalar()
+        
+        return jsonify({
+            'status': 'ok',
+            'database_connected': True,
+            'bin_count': bin_count,
+            'exploit_type_count': exploit_count,
+            'timestamp': datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Database error in debug endpoint: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'database_connected': False,
+            'error': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500
+
 @app.route('/api/stats')
 def api_stats():
     """API endpoint to get statistics"""

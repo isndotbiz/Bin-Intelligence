@@ -743,6 +743,22 @@
         
         // Initial load of BIN data
         loadBINData();
+        
+        // Add click event listeners to sortable column headers
+        document.querySelectorAll('.sortable').forEach(header => {
+            header.addEventListener('click', function() {
+                const field = this.getAttribute('data-sort-field');
+                let direction = 'asc';
+                
+                // Toggle sort direction if already sorting by this field
+                if (field === currentSortField) {
+                    direction = currentSortDirection === 'asc' ? 'desc' : 'asc';
+                }
+                
+                // Sort the table
+                sortBinsData(field, direction);
+            });
+        });
 
         // Toggle patched bins in table
         document.getElementById('show-patched-bins').addEventListener('change', function() {
