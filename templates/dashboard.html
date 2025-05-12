@@ -13,6 +13,7 @@
     <style>
         body {
             background-color: #f8f9fa;  /* Light gray background */
+            color: #212529;  /* Dark text */
         }
         
         .dashboard-card {
@@ -27,6 +28,18 @@
         
         .card-header {
             font-weight: bold;
+        }
+        
+        .title-section {
+            background-color: #343a40;
+            color: white;
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+        
+        .title-section h1 {
+            font-weight: 600;
+            margin: 0;
         }
         
         .loading-spinner {
@@ -76,10 +89,16 @@
     </style>
 </head>
 <body>
+    <div class="title-section">
+        <div class="container">
+            <h1 class="text-center"><i class="bi bi-shield-lock"></i> E-Commerce BIN Intelligence Dashboard</h1>
+            <p class="text-center text-light mb-0">Real-time monitoring of exploited BINs for fraud prevention</p>
+        </div>
+    </div>
+    
     <div class="container-fluid p-4">
         <div class="row mb-4">
             <div class="col-md-12">
-                <h2 class="mb-4"><i class="bi bi-shield-lock"></i> E-Commerce BIN Intelligence Dashboard</h2>
                 <p>
                     Monitor and track exploited credit card BINs with real-time verification and 3DS support detection.
                     This dashboard focuses exclusively on e-commerce fraud vectors, showing only BINs from major card networks (Visa, MasterCard, American Express, and Discover).
