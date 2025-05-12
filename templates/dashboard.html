@@ -29,6 +29,33 @@
             max-height: 500px;
             overflow-y: auto;
         }
+        /* Sortable table styles */
+        .sortable {
+            cursor: pointer;
+            position: relative;
+            user-select: none;
+        }
+        .sortable:hover {
+            background-color: rgba(var(--bs-primary-rgb), 0.1);
+        }
+        .sort-icon {
+            display: inline-block;
+            width: 0;
+            height: 0;
+            margin-left: 5px;
+            vertical-align: middle;
+            content: "";
+        }
+        .sortable[data-sort-dir="asc"] .sort-icon:after {
+            content: "▲";
+            font-size: 0.7em;
+            vertical-align: 1px;
+        }
+        .sortable[data-sort-dir="desc"] .sort-icon:after {
+            content: "▼";
+            font-size: 0.7em;
+            vertical-align: 1px;
+        }
         .dashboard-stats {
             font-size: 1.8rem;
             font-weight: bold;
@@ -205,17 +232,17 @@
                             <table class="table table-striped table-hover">
                                 <thead>
                                     <tr>
-                                        <th>BIN</th>
-                                        <th>Exploit Type</th>
-                                        <th>Patch Status</th>
-                                        <th>Issuer</th>
-                                        <th>Brand</th>
-                                        <th>Type</th>
-                                        <th>Card Country</th>
-                                        <th>Trans. Country</th>
-                                        <th>3DS v1</th>
-                                        <th>3DS v2</th>
-                                        <th>Verified</th>
+                                        <th class="sortable" data-sort-field="BIN">BIN <span class="sort-icon"></span></th>
+                                        <th class="sortable" data-sort-field="exploit_type">Exploit Type <span class="sort-icon"></span></th>
+                                        <th class="sortable" data-sort-field="patch_status">Patch Status <span class="sort-icon"></span></th>
+                                        <th class="sortable" data-sort-field="issuer">Issuer <span class="sort-icon"></span></th>
+                                        <th class="sortable" data-sort-field="brand">Brand <span class="sort-icon"></span></th>
+                                        <th class="sortable" data-sort-field="type">Type <span class="sort-icon"></span></th>
+                                        <th class="sortable" data-sort-field="country">Card Country <span class="sort-icon"></span></th>
+                                        <th class="sortable" data-sort-field="transaction_country">Trans. Country <span class="sort-icon"></span></th>
+                                        <th class="sortable" data-sort-field="threeDS1Supported">3DS v1 <span class="sort-icon"></span></th>
+                                        <th class="sortable" data-sort-field="threeDS2supported">3DS v2 <span class="sort-icon"></span></th>
+                                        <th class="sortable" data-sort-field="is_verified">Verified <span class="sort-icon"></span></th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -412,6 +439,11 @@
         // Pagination variables
         let currentPage = 1;
         const perPage = 200; // Maximum 200 BINs per page
+        
+        // Sorting variables
+        let currentSortField = null;
+        let currentSortDirection = null;
+        let currentBinsData = []; // Store current page data for client-side sorting
         
         // Function to load BIN data with pagination
         function loadBINData(page = 1) {
