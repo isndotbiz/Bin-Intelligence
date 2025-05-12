@@ -11,55 +11,19 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root {
-            --primary-bg: #D9A0C6;      /* Alpine Oat */
-            --primary-text: #A47864;    /* Mocha Mousse */
-            --accent-color: #FCE38A;    /* Butter Yellow */
-            --cta-color: #4CAF50;       /* Dill Green */
-            --highlight-color: #7B5CFA; /* Aura Indigo */
-        }
-        
-        body {
-            background-color: var(--primary-bg);
-            color: var(--primary-text);
-        }
-        
-        .card {
-            border-color: var(--primary-text);
-        }
-        
-        .card-header {
-            background-color: var(--accent-color);
-            color: var(--primary-text);
-            font-weight: bold;
-        }
-        
-        .btn-primary {
-            background-color: var(--cta-color);
-            border-color: var(--cta-color);
-        }
-        
-        .btn-primary:hover {
-            background-color: #3a8c3c;
-            border-color: #3a8c3c;
-        }
-        
-        a {
-            color: var(--highlight-color);
-        }
-        
-        a:hover {
-            color: #6545d9;
-        }
-        
         .dashboard-card {
             transition: transform 0.3s ease;
             height: 100%;
-            background-color: white;
         }
         
         .dashboard-card:hover {
             transform: translateY(-5px);
+        }
+        
+        .card-header {
+            font-weight: bold;
+            background-color: #f8f9fa;
+            color: #212529;
         }
         
         .loading-spinner {
@@ -82,7 +46,7 @@
         }
         
         .sortable:hover {
-            background-color: var(--accent-color);
+            background-color: rgba(0, 123, 255, 0.1);
         }
         
         .sort-icon {
@@ -104,21 +68,7 @@
         .dashboard-stats {
             font-size: 3rem;
             font-weight: bold;
-            color: var(--highlight-color);
-        }
-        
-        .accordion-button:not(.collapsed) {
-            background-color: var(--accent-color);
-            color: var(--primary-text);
-        }
-        
-        .accordion-button:focus {
-            border-color: var(--highlight-color);
-            box-shadow: 0 0 0 0.25rem rgba(123, 92, 250, 0.25);
-        }
-        
-        .table {
-            color: var(--primary-text);
+            color: #0d6efd;
         }
     </style>
 </head>
@@ -138,7 +88,7 @@
         <div class="row mb-4">
             <div class="col-md-3">
                 <div class="card dashboard-card">
-                    <div class="card-header">
+                    <div class="card-header bg-primary text-white">
                         Total Exploited BINs
                     </div>
                     <div class="card-body d-flex justify-content-center align-items-center">
@@ -148,7 +98,7 @@
             </div>
             <div class="col-md-3">
                 <div class="card dashboard-card">
-                    <div class="card-header">
+                    <div class="card-header bg-danger text-white">
                         Exploitable BINs
                     </div>
                     <div class="card-body d-flex justify-content-center align-items-center">
@@ -158,7 +108,7 @@
             </div>
             <div class="col-md-3">
                 <div class="card dashboard-card">
-                    <div class="card-header">
+                    <div class="card-header bg-success text-white">
                         Patched BINs
                     </div>
                     <div class="card-body d-flex justify-content-center align-items-center">
@@ -168,7 +118,7 @@
             </div>
             <div class="col-md-3">
                 <div class="card dashboard-card">
-                    <div class="card-header">
+                    <div class="card-header bg-info text-white">
                         Unique Issuers
                     </div>
                     <div class="card-body d-flex justify-content-center align-items-center">
@@ -393,7 +343,7 @@
                     </div>
                     <div class="card-body">
                         <p>Refresh the BIN intelligence data by scanning for new exploited BINs from fraud feeds.</p>
-                        <button id="refresh-data-btn" class="btn btn-primary">
+                        <button id="refresh-data-btn" class="btn btn-success">
                             <i class="bi bi-arrow-clockwise"></i> Refresh Data
                         </button>
                         <div class="mt-3" id="refresh-result"></div>
@@ -411,10 +361,10 @@
         // Chart variables
         let exploitTypesChart, threedsChart, brandsChart, countriesChart;
         
-        // Chart colors
+        // Chart colors - using standard Bootstrap colors for better visibility
         const chartColors = [
-            '#7B5CFA', '#4CAF50', '#FCE38A', '#D9A0C6', '#A47864', 
-            '#6545d9', '#3a8c3c', '#e5cb6a', '#c07fb0', '#8a634f'
+            '#0d6efd', '#dc3545', '#198754', '#0dcaf0', '#6c757d',
+            '#6610f2', '#fd7e14', '#ffc107', '#20c997', '#d63384'
         ];
 
         // Show loading spinners
