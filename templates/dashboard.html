@@ -511,7 +511,29 @@
                     
                     const tableBody = document.getElementById('bins-table-body');
                     const row = document.createElement('tr');
-                    row.innerHTML = `<td colspan="9" class="text-center">Error loading BIN data. Please try refreshing the page.</td>`;
+                    
+                    // Check if API returned structured error response
+                    if (error.response && error.response.bins) {
+                        // API returned structured response with empty bins
+                        row.innerHTML = `<td colspan="12" class="text-center">
+                            <div class="alert alert-warning">
+                                <strong>Database Error:</strong> The system encountered an error loading BIN data.
+                                <br>Our developers have been notified and are working on a fix.
+                                <br><small>Technical details: ${error.response.detail || 'Unknown error'}</small>
+                                <br><button class="btn btn-sm btn-primary mt-2" onclick="loadBINData()">Try Again</button>
+                            </div>
+                        </td>`;
+                    } else {
+                        // Generic error (network error, etc)
+                        row.innerHTML = `<td colspan="12" class="text-center">
+                            <div class="alert alert-danger">
+                                <strong>Connection Error:</strong> Could not load BIN data.
+                                <br>Please check your network connection and try refreshing the page.
+                                <br><button class="btn btn-sm btn-primary mt-2" onclick="loadBINData()">Try Again</button>
+                            </div>
+                        </td>`;
+                    }
+                    
                     tableBody.appendChild(row);
                     
                     // Reset pagination info

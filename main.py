@@ -501,20 +501,36 @@ def api_bins():
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 200, type=int)  # Default to 200 BINs per page
         
-        # First try to get BINs from database
-        bins_data = get_bins_from_database()
-        if not bins_data:
-            # If no data in database, fallback to file
+        # Get BINs from database with proper error handling
+        try:
+            # First try direct query
+            bins_data = get_bins_from_database()
+        except Exception as db_error:
+            logger.error(f"Database error when fetching BINs: {str(db_error)}")
+            # Fallback to load_bin_data which has its own error handling
             bins_data = load_bin_data()
+        
+        # If we still have no data, return an empty list but with proper response structure
+        if not bins_data:
+            bins_data = []
+            logger.warning("No BIN data available from any source")
         
         # Calculate total pages
         total_bins = len(bins_data)
-        total_pages = (total_bins + per_page - 1) // per_page  # Ceiling division
+        total_pages = max(1, (total_bins + per_page - 1) // per_page)  # At least 1 page
         
-        # Apply pagination
+        # Ensure page is in valid range
+        page = max(1, min(page, total_pages))
+            
+        # Apply pagination safely
         start_idx = (page - 1) * per_page
-        end_idx = start_idx + per_page
-        paginated_bins = bins_data[start_idx:end_idx]
+        end_idx = min(start_idx + per_page, total_bins)  # Ensure we don't go past the end
+        
+        # Handle empty results by providing empty list rather than slice error
+        if start_idx >= total_bins:
+            paginated_bins = []
+        else:
+            paginated_bins = bins_data[start_idx:end_idx]
         
         # Prepare response with pagination metadata
         response = {
@@ -530,7 +546,21 @@ def api_bins():
         return jsonify(response)
     except Exception as e:
         logger.error(f"Error in api_bins: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        # Return structured response even on error for better client handling
+        # Set default per_page value since original might be unavailable
+        default_per_page = 200
+        
+        return jsonify({
+            'error': 'Error loading BIN data', 
+            'detail': str(e),
+            'bins': [],
+            'pagination': {
+                'total_bins': 0,
+                'total_pages': 1,
+                'current_page': 1,
+                'per_page': default_per_page
+            }
+        }), 500
 
 @app.route('/api/stats')
 def api_stats():
