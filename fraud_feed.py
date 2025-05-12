@@ -14,7 +14,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Define keyword to exploit type mapping - focus only on CNP for e-commerce
+# Define keyword to exploit type mapping - focus on e-commerce vulnerabilities
 KEYWORD_TO_EXPLOIT_TYPE = {
     # Card-not-present related keywords
     "cnp": "card-not-present",
@@ -33,7 +33,21 @@ KEYWORD_TO_EXPLOIT_TYPE = {
     "processor": "card-not-present",
     "transaction": "card-not-present",
     "website": "card-not-present",
-    "virtual": "card-not-present"
+    "virtual": "card-not-present",
+    
+    # False-positive CVV keywords
+    "cvv": "false-positive-cvv",
+    "cvv2": "false-positive-cvv",
+    "cvc": "false-positive-cvv",
+    "verification": "false-positive-cvv",
+    "security code": "false-positive-cvv",
+    "bypass": "false-positive-cvv",
+    "wrong cvv": "false-positive-cvv",
+    "incorrect cvv": "false-positive-cvv",
+    "any cvv": "false-positive-cvv",
+    "000": "false-positive-cvv",
+    "random": "false-positive-cvv",
+    "weak verification": "false-positive-cvv"
 }
 
 # PAN regex pattern - matches credit card numbers with optional separators

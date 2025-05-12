@@ -863,8 +863,9 @@ def generate_more_bins():
                     logger.info(f"BIN {bin_data['BIN']} flagged as cross-border: " + 
                                 f"card from {card_country}, transaction in {transaction_country}")
                 else:
-                    # For other BINs, assign card-not-present as the exploit type
-                    bin_data["exploit_type"] = "card-not-present"
+                    # For other BINs, assign one of our e-commerce relevant exploit types
+                    e_commerce_exploit_types = ["card-not-present", "false-positive-cvv"]
+                    bin_data["exploit_type"] = random.choice(e_commerce_exploit_types)
             
         # Save the verified BINs to the database
         created, updated = save_bins_to_database(enriched_bins)
