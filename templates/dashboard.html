@@ -228,29 +228,38 @@
                                 <span class="visually-hidden">Loading...</span>
                             </div>
                         </div>
-                        <div class="mt-3 small">
-                            <strong>3DS Support Explained:</strong>
-                            <div class="accordion mt-2" id="3dsAccordion">
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#3dsCollapse" aria-expanded="false" aria-controls="3dsCollapse">
-                                            <span class="badge bg-danger me-2">No 3DS</span>
-                                            <span class="badge bg-warning text-dark me-2">3DS v1</span>
-                                            <span class="badge bg-success me-2">3DS v2</span>
-                                            <span class="badge bg-primary">Auto 3DS</span>
-                                        </button>
-                                    </h2>
-                                    <div id="3dsCollapse" class="accordion-collapse collapse" data-bs-parent="#3dsAccordion">
-                                        <div class="accordion-body">
-                                            <p><strong>No 3DS:</strong> Cards lacking 3D Secure protection are highly vulnerable to fraud, with no additional verification during checkout.</p>
-                                            <p><strong>3DS v1 Only:</strong> First-generation protocol requiring manual verification, often causing checkout friction and abandonment.</p>
-                                            <p><strong>3DS v2:</strong> Enhanced protocol with risk-based authentication, improved user experience, and stronger fraud prevention.</p>
-                                            <p class="mb-0"><strong>Auto 3DS:</strong> Seamless authentication without user intervention, providing maximum security with minimal friction.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="mt-4 p-3 bg-dark text-white rounded border">
+                            <h6 class="fw-bold text-warning"><i class="bi bi-info-circle"></i> 3DS Support Explained</h6>
+                            <ul class="mb-0">
+                                <li class="mb-2"><span class="badge bg-danger">No 3DS</span>: Cards lacking 3D Secure protection are highly vulnerable to fraud, with no additional verification during checkout.</li>
+                                
+                                <li class="mb-2"><span class="badge bg-warning" style="color: #000; font-weight: bold;">3DS v1</span>: First-generation protocol requiring manual verification, often causing checkout friction and abandonment.</li>
+                                
+                                <li class="mb-2"><span class="badge bg-success">3DS v2</span>: Enhanced protocol with risk-based authentication, improved user experience, and stronger fraud prevention.</li>
+                                
+                                <li><span class="badge bg-primary">Auto 3DS</span>: Seamless authentication without user intervention, providing maximum security with minimal friction.</li>
+                            </ul>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- BIN Classification Explanation Row -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card dashboard-card">
+                    <div class="card-header bg-secondary text-white">
+                        BIN Classification Methodology
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2"><strong>Data Sources:</strong> BINs are classified based on two primary sources: fraud feeds from monitored networks and verified data from Neutrino API. Classification begins with pattern identification in known fraud incidents.</p>
+                        
+                        <p class="mb-2"><strong>Classification Process:</strong> Our system uses a multi-stage analysis pipeline that first identifies exploited BINs, then verifies their characteristics (issuing bank, country, card type) with Neutrino API. The exploit type is determined by analyzing transaction patterns, authentication failures, and geographic anomalies.</p>
+                        
+                        <p class="mb-2"><strong>Patch Status:</strong> A BIN's patch status is determined primarily by its 3DS support level. Cards with 3DS v2 or Auto-3DS are labeled "Patched," as they have modern authentication capabilities. BINs with no 3DS or only 3DS v1 are labeled "Exploitable" and should receive enhanced monitoring.</p>
+                        
+                        <p class="mb-0"><strong>Risk Scoring:</strong> BINs are assigned risk scores based on a weighted combination of exploit frequency, patch status, and historical fraud rates. Higher scores indicate greater vulnerability and should trigger additional verification measures during checkout.</p>
                     </div>
                 </div>
             </div>
