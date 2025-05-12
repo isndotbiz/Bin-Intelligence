@@ -776,12 +776,8 @@ def generate_more_bins():
         # Process up to 50 BINs at a time to avoid timeouts (client can call multiple times)
         count = min(int(request.args.get('count', 10)), 50)
         
-        # Get cross-border flag - default to True to generate cross-border BINs
-        include_cross_border = request.args.get('cross_border', 'true').lower() == 'true'
-        
+        # No longer using cross-border simulation as it would be unethical without real transaction data
         logger.info(f"Generating {count} BINs (limited to prevent timeouts)")
-        if include_cross_border:
-            logger.info("Including cross-border fraud detection")
         
         # Get all existing BINs to avoid duplicates
         existing_bins = set(bin_record.bin_code for bin_record in session.query(BIN.bin_code).all())
@@ -856,37 +852,32 @@ def generate_more_bins():
         enriched_bins = enriched_bins[:count]
         logger.info(f"Successfully verified {len(enriched_bins)} BINs with Neutrino API")
         
-        # Add cross-border exploit classification to some of the BINs if requested
-        if include_cross_border:
-            # Get all exploit types
-            exploit_types = session.query(ExploitType).all()
-            exploit_type_map = {et.name: et for et in exploit_types}
+        # Do not simulate cross-border fraud with random data - it would be unethical
+        # Only assign genuine exploit types based on card security features
+        
+        # Get all exploit types
+        exploit_types = session.query(ExploitType).all()
+        exploit_type_map = {et.name: et for et in exploit_types}
+        
+        # Apply ethical classification - only use what we can determine from actual card data
+        for i, bin_data in enumerate(enriched_bins):
+            # Check security features to assign appropriate exploit types
+            threeds1_supported = bin_data.get("threeds1_supported", False)
+            threeds2_supported = bin_data.get("threeds2_supported", False)
             
-            # Set cross-border exploit type to approximately 40% of BINs
-            for i, bin_data in enumerate(enriched_bins):
-                if random.random() < 0.4:
-                    # Simulate cross-border fraud by setting a transaction location
-                    # that differs from the card's issuing country
-                    card_country = bin_data.get("country", "US")
-                    
-                    # List of common transaction countries different from card's country
-                    transaction_countries = ["US", "CA", "GB", "FR", "DE", "IT", "ES", "JP", "SG", "AU"]
-                    # Remove the card's own country from the list
-                    if card_country in transaction_countries:
-                        transaction_countries.remove(card_country)
-                    
-                    # Select a random transaction country
-                    transaction_country = random.choice(transaction_countries)
-                    
-                    bin_data["transaction_country"] = transaction_country
-                    bin_data["exploit_type"] = "cross-border"
-                    
-                    logger.info(f"BIN {bin_data['BIN']} flagged as cross-border: " + 
-                                f"card from {card_country}, transaction in {transaction_country}")
-                else:
-                    # For other BINs, assign one of our e-commerce relevant exploit types
-                    e_commerce_exploit_types = ["card-not-present", "false-positive-cvv", "no-auto-3ds"]
-                    bin_data["exploit_type"] = random.choice(e_commerce_exploit_types)
+            if not threeds1_supported and not threeds2_supported:
+                # No 3DS support at all - assign no-auto-3ds exploit type
+                bin_data["exploit_type"] = "no-auto-3ds"
+            else:
+                # All online transactions are susceptible to card-not-present fraud
+                bin_data["exploit_type"] = "card-not-present"
+            
+            # Note: cross-border is removed as it requires real transaction data
+            # Note: false-positive-cvv requires actual CVV testing which we don't do
+            
+            # Remove any simulated transaction country data to avoid misleading information
+            if "transaction_country" in bin_data:
+                del bin_data["transaction_country"]
             
         # Save the verified BINs to the database with our improved function
         created, updated = save_bins_to_database(enriched_bins)

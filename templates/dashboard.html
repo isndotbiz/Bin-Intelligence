@@ -203,7 +203,7 @@
                             <ul class="mb-0">
                                 <li class="mb-2"><span class="badge bg-danger">Card-Not-Present</span>: Fraud in online purchases where the physical card is absent. Fraudsters use stolen data for test transactions before larger purchases.</li>
                                 
-                                <li class="mb-2"><span class="badge bg-warning" style="color: #000; font-weight: bold;">Cross-Border</span>: Exploits cards in countries different from issuance, targeting regions with weaker controls where banks have limited visibility.</li>
+                                <li class="mb-2"><span class="badge bg-warning" style="color: #000; font-weight: bold;">Cross-Border</span>: <strong>[Requires actual transaction data]</strong> - To detect cross-border fraud, clients would need to supply their own transaction location data to identify cards used outside their country of issuance.</li>
                                 
                                 <li class="mb-2"><span class="badge bg-info">False-Positive CVV</span>: Banks fail to properly validate security codes, approving transactions with any CVV. Common in smaller banks with outdated systems.</li>
                                 
@@ -252,9 +252,9 @@
                         BIN Classification Methodology
                     </div>
                     <div class="card-body">
-                        <p class="mb-2"><strong>Data Sources:</strong> BINs are classified based on two primary sources: fraud feeds from monitored networks and verified data from Neutrino API. Classification begins with pattern identification in known fraud incidents. BINs are classified by exploit type based on patterns observed in these feeds and authenticated Neutrino API data.</p>
+                        <p class="mb-2"><strong>Data Sources:</strong> BINs are classified based exclusively on verified data from Neutrino API. We use only factual information about card properties (issuer, country, 3DS support) directly from the Neutrino API. We do not use simulated data, synthetic fraud patterns, or theoretical exploits - all information is backed by authentic data from authorized sources.</p>
                         
-                        <p class="mb-2"><strong>Classification Process:</strong> Our system uses a multi-stage analysis pipeline that first identifies exploited BINs, then verifies their characteristics (issuing bank, country, card type) with Neutrino API. The exploit type is determined by analyzing transaction patterns, authentication failures, and geographic anomalies.</p>
+                        <p class="mb-2"><strong>Classification Process:</strong> Our system uses a multi-stage analysis pipeline that first identifies BINs, then verifies their characteristics (issuing bank, country, card type) with Neutrino API. The exploit type is determined by analyzing verified security features like 3DS support. We do not use simulated data - all classifications are based solely on factual card properties from Neutrino API.</p>
                         
                         <p class="mb-2"><strong>Patch Status:</strong> A BIN's patch status is determined primarily by its 3DS support level. Cards with 3DS v2 or Auto-3DS are labeled "Patched," as they have modern authentication capabilities. BINs with no 3DS or only 3DS v1 are labeled "Exploitable" and should receive enhanced monitoring. Cards without 3DS support are significantly more vulnerable to attack vectors and should be prioritized for additional security measures.</p>
                         
@@ -978,8 +978,7 @@
                                 <td>${data.type || 'Unknown'}</td>
                                 <td>${data.country || 'Unknown'}</td>
                                 <td>${isCrossBorder ? 
-                                    `<span class="badge bg-warning text-dark" title="Cross-border transaction detected">${data.transaction_country || 'Unknown'}</span>` : 
-                                    (data.transaction_country || '-')}
+                                    '-' /* Cross-border detection requires actual transaction data */}
                                 </td>
                                 <td>${data.threeDS1Supported ? '✓' : '✗'}</td>
                                 <td>${data.threeDS2supported ? '✓' : '✗'}</td>
