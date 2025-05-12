@@ -163,9 +163,9 @@ def get_blocklist_bins(
             
             # 3. 3DS support score (0-100) * 1.0
             threeds_score = 0
-            if not bin_obj.threeDS1Supported and not bin_obj.threeDS2Supported:
+            if not bin_obj.threeds1_supported and not bin_obj.threeds2_supported:
                 threeds_score = 100
-            elif bin_obj.threeDS1Supported and not bin_obj.threeDS2Supported:
+            elif bin_obj.threeds1_supported and not bin_obj.threeds2_supported:
                 threeds_score = 50
             weighted_threeds_score = threeds_score * 1.0
             

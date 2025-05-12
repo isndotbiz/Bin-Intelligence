@@ -56,26 +56,26 @@ def get_all_bins() -> List[Dict[str, Any]]:
         for bin_obj in bins:
             bin_data = {
                 'id': bin_obj.id,
-                'bin': bin_obj.bin,
-                'bank_name': bin_obj.bank_name,
-                'bank_url': bin_obj.bank_url,
-                'bank_phone': bin_obj.bank_phone,
-                'bank_city': bin_obj.bank_city,
+                'bin': bin_obj.bin_code,
+                'bank_name': bin_obj.issuer,
+                'bank_url': bin_obj.issuer_website,
+                'bank_phone': bin_obj.issuer_phone,
+                'bank_city': '',
                 'country': bin_obj.country,
                 'state': bin_obj.state,
                 'transaction_country': bin_obj.transaction_country,
-                'scheme': bin_obj.scheme,
+                'scheme': bin_obj.brand,
                 'card_type': bin_obj.card_type,
-                'card_category': bin_obj.card_category,
-                'is_prepaid': bin_obj.is_prepaid,
-                'is_commercial': bin_obj.is_commercial,
+                'card_category': '',
+                'is_prepaid': bin_obj.prepaid,
+                'is_commercial': False,
                 'is_verified': bin_obj.is_verified,
-                'verification_date': bin_obj.verification_date.isoformat() if bin_obj.verification_date else None,
+                'verification_date': bin_obj.verified_at.isoformat() if bin_obj.verified_at else None,
                 'data_source': bin_obj.data_source,
-                'threeDS1Supported': bin_obj.threeDS1Supported,
-                'threeDS2Supported': bin_obj.threeDS2Supported,
+                'threeDS1Supported': bin_obj.threeds1_supported,
+                'threeDS2Supported': bin_obj.threeds2_supported,
                 'patch_status': bin_obj.patch_status,
-                'verification_frequency': bin_obj.verification_frequency,
+                'verification_frequency': 1,
                 'exploit_types': []
             }
             
@@ -120,8 +120,8 @@ def get_dashboard_statistics() -> Dict[str, Any]:
         
         # Count BINs by scheme (card network)
         bins_by_scheme = {}
-        scheme_counts = session.query(BIN.scheme, func.count(BIN.id))\
-            .group_by(BIN.scheme)\
+        scheme_counts = session.query(BIN.brand, func.count(BIN.id))\
+            .group_by(BIN.brand)\
             .order_by(desc(func.count(BIN.id)))\
             .all()
         
@@ -166,8 +166,8 @@ def get_dashboard_statistics() -> Dict[str, Any]:
                 bins_by_state[state] = count
         
         # Count BINs by 3DS support
-        threeDS1_supported = session.query(func.count(BIN.id)).filter(BIN.threeDS1Supported == True).scalar() or 0
-        threeDS2_supported = session.query(func.count(BIN.id)).filter(BIN.threeDS2Supported == True).scalar() or 0
+        threeDS1_supported = session.query(func.count(BIN.id)).filter(BIN.threeds1_supported == True).scalar() or 0
+        threeDS2_supported = session.query(func.count(BIN.id)).filter(BIN.threeds2_supported == True).scalar() or 0
         
         # Compile statistics
         statistics = {
