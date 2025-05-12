@@ -11,52 +11,114 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        :root {
+            --primary-bg: #D9A0C6;      /* Alpine Oat */
+            --primary-text: #A47864;    /* Mocha Mousse */
+            --accent-color: #FCE38A;    /* Butter Yellow */
+            --cta-color: #4CAF50;       /* Dill Green */
+            --highlight-color: #7B5CFA; /* Aura Indigo */
+        }
+        
+        body {
+            background-color: var(--primary-bg);
+            color: var(--primary-text);
+        }
+        
+        .card {
+            border-color: var(--primary-text);
+        }
+        
+        .card-header {
+            background-color: var(--accent-color);
+            color: var(--primary-text);
+            font-weight: bold;
+        }
+        
+        .btn-primary {
+            background-color: var(--cta-color);
+            border-color: var(--cta-color);
+        }
+        
+        .btn-primary:hover {
+            background-color: #3a8c3c;
+            border-color: #3a8c3c;
+        }
+        
+        a {
+            color: var(--highlight-color);
+        }
+        
+        a:hover {
+            color: #6545d9;
+        }
+        
         .dashboard-card {
             transition: transform 0.3s ease;
             height: 100%;
+            background-color: white;
         }
+        
         .dashboard-card:hover {
             transform: translateY(-5px);
         }
-        .card-header {
-            font-weight: bold;
-        }
+        
         .loading-spinner {
             display: none;
             justify-content: center;
             align-items: center;
             height: 200px;
         }
+        
         .bin-table-container {
             max-height: 500px;
             overflow-y: auto;
         }
+        
         /* Sortable table styles */
         .sortable {
             cursor: pointer;
             position: relative;
             user-select: none;
         }
+        
         .sortable:hover {
-            background-color: rgba(var(--bs-primary-rgb), 0.1);
+            background-color: var(--accent-color);
         }
+        
         .sort-icon {
             display: inline-block;
         }
+        
         .sortable[data-sort-dir="asc"] .sort-icon:after {
             content: "▲";
             font-size: 0.8em;
             margin-left: 5px;
         }
+        
         .sortable[data-sort-dir="desc"] .sort-icon:after {
             content: "▼";
             font-size: 0.8em;
             margin-left: 5px;
         }
+        
         .dashboard-stats {
             font-size: 3rem;
             font-weight: bold;
-            color: var(--bs-primary);
+            color: var(--highlight-color);
+        }
+        
+        .accordion-button:not(.collapsed) {
+            background-color: var(--accent-color);
+            color: var(--primary-text);
+        }
+        
+        .accordion-button:focus {
+            border-color: var(--highlight-color);
+            box-shadow: 0 0 0 0.25rem rgba(123, 92, 250, 0.25);
+        }
+        
+        .table {
+            color: var(--primary-text);
         }
     </style>
 </head>
@@ -64,10 +126,10 @@
     <div class="container-fluid p-4">
         <div class="row mb-4">
             <div class="col-md-12">
-                <h2 class="mb-4"><i class="bi bi-shield-lock"></i> BIN Intelligence Dashboard</h2>
-                <p class="text-muted">
+                <h2 class="mb-4"><i class="bi bi-shield-lock"></i> E-Commerce BIN Intelligence Dashboard</h2>
+                <p>
                     Monitor and track exploited credit card BINs with real-time verification and 3DS support detection.
-                    This dashboard filters out non-major card networks (showing only Visa, MasterCard, American Express, and Discover).
+                    This dashboard focuses exclusively on e-commerce fraud vectors, showing only BINs from major card networks (Visa, MasterCard, American Express, and Discover).
                 </p>
             </div>
         </div>
@@ -76,7 +138,7 @@
         <div class="row mb-4">
             <div class="col-md-3">
                 <div class="card dashboard-card">
-                    <div class="card-header bg-primary text-white">
+                    <div class="card-header">
                         Total Exploited BINs
                     </div>
                     <div class="card-body d-flex justify-content-center align-items-center">
@@ -86,7 +148,7 @@
             </div>
             <div class="col-md-3">
                 <div class="card dashboard-card">
-                    <div class="card-header bg-danger text-white">
+                    <div class="card-header">
                         Exploitable BINs
                     </div>
                     <div class="card-body d-flex justify-content-center align-items-center">
@@ -96,7 +158,7 @@
             </div>
             <div class="col-md-3">
                 <div class="card dashboard-card">
-                    <div class="card-header bg-success text-white">
+                    <div class="card-header">
                         Patched BINs
                     </div>
                     <div class="card-body d-flex justify-content-center align-items-center">
@@ -106,7 +168,7 @@
             </div>
             <div class="col-md-3">
                 <div class="card dashboard-card">
-                    <div class="card-header bg-info text-white">
+                    <div class="card-header">
                         Unique Issuers
                     </div>
                     <div class="card-body d-flex justify-content-center align-items-center">
@@ -351,8 +413,8 @@
         
         // Chart colors
         const chartColors = [
-            '#4285F4', '#DB4437', '#F4B400', '#0F9D58', '#7651b2', 
-            '#3aa0d1', '#654321', '#ff6ec7', '#4B0082', '#FFA500'
+            '#7B5CFA', '#4CAF50', '#FCE38A', '#D9A0C6', '#A47864', 
+            '#6545d9', '#3a8c3c', '#e5cb6a', '#c07fb0', '#8a634f'
         ];
 
         // Show loading spinners
