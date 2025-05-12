@@ -209,7 +209,7 @@
                                     </h2>
                                     <div id="cardNotPresentCollapse" class="accordion-collapse collapse" data-bs-parent="#exploitTypesAccordion">
                                         <div class="accordion-body">
-                                            Card-Not-Present (CNP) fraud involves transactions where the physical card isn't used directly, such as online purchases. This exploit type accounts for over 60% of e-commerce fraud. BINs flagged with this vulnerability show patterns of successful fraudulent online transactions where verification methods failed. The process typically starts with purchasing stolen card data from dark web marketplaces, followed by "card testing" with small transactions before larger purchases. Cards marked "Exploitable" lack 3D Secure protection, making them vulnerable to unauthorized use. Merchants processing these BINs should implement AVS, risk-based authentication, and device fingerprinting as additional security layers.
+                                            <p class="mb-0">Card-Not-Present (CNP) fraud occurs in online purchases where the physical card is absent. Fraudsters acquire stolen card data from dark web marketplaces, perform small "test" transactions, then make larger purchases. BINs flagged with this vulnerability lack adequate verification methods, especially 3D Secure. Merchants should implement AVS, device fingerprinting, and risk-based authentication to detect and prevent these fraudulent transactions.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -222,7 +222,7 @@
                                     </h2>
                                     <div id="crossBorderCollapse" class="accordion-collapse collapse" data-bs-parent="#exploitTypesAccordion">
                                         <div class="accordion-body">
-                                            Cross-Border fraud involves using payment cards in countries different from their issuance location. This exploit exploits inconsistent fraud monitoring across international boundaries and verification delays. BINs flagged with this vulnerability show high usage rates in countries where the issuing bank has limited visibility. Fraudsters rapidly monetize stolen card data in regions with weaker controls or higher acceptance of transactions without strong authentication. Our system identifies these patterns by analyzing transaction country mismatches against cardholder profiles. Cards without 3D Secure protection (marked "Exploitable") are particularly vulnerable, lacking the dynamic authentication that identifies unauthorized users. Prevention measures include geofencing controls and country-specific risk rules.
+                                            <p class="mb-0">Cross-Border fraud exploits cards in countries different from where they were issued, taking advantage of inconsistent monitoring across international boundaries. These attacks target regions with weaker fraud controls where issuing banks have limited visibility. BINs flagged with this vulnerability show suspicious geographic usage patterns. Prevention measures include geofencing controls, country-specific risk rules, and transaction velocity monitoring to detect unusual regional activity.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -235,7 +235,7 @@
                                     </h2>
                                     <div id="falsePositiveCVVCollapse" class="accordion-collapse collapse" data-bs-parent="#exploitTypesAccordion">
                                         <div class="accordion-body">
-                                            False-Positive CVV vulnerability refers to a security flaw where payment card issuers fail to properly validate the CVV during authorization, accepting transactions with incorrect security codes. Unlike standard CVV compromise where the correct code is stolen, this vulnerability exists at the issuing bank's system level. Cards with this flaw accept any CVV input despite having a different actual CVV printed on the card. Our system identifies these BINs through pattern analysis, detecting unusually high authorization rates for transactions with incorrect CVV codes. This vulnerability often affects cards from smaller issuing banks with outdated systems. Merchants should implement additional security layers including fraud scoring and step-up authentication for these BINs.
+                                            <p class="mb-0">False-Positive CVV vulnerability occurs when issuing banks fail to properly validate the card security code during authorization. Affected BINs will approve transactions with any CVV—correct or incorrect. This system-level flaw exists at the issuing bank rather than through data theft. Our detection identifies BINs with unusually high authorization rates for incorrect CVVs. This vulnerability typically affects smaller banks with outdated validation systems. Additional verification measures are essential when processing these cards.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -272,14 +272,28 @@
                                 <span class="visually-hidden">Loading...</span>
                             </div>
                         </div>
-                        <div class="mt-4 p-3 bg-dark text-white rounded border">
-                            <h6 class="fw-bold text-warning"><i class="bi bi-info-circle"></i> 3DS Support Explained</h6>
-                            <ul class="mb-0">
-                                <li class="mb-2"><span class="badge bg-danger">No 3DS</span>: Cards with no 3D Secure support are highly vulnerable to card-not-present fraud.</li>
-                                <li class="mb-2"><span class="badge bg-warning" style="color: #000; font-weight: bold;">3DS v1 Only</span>: First-generation 3DS with basic security that requires manual verification.</li>
-                                <li class="mb-2"><span class="badge bg-success">3DS v2</span>: Enhanced security with risk-based authentication and improved user experience.</li>
-                                <li><span class="badge bg-primary">Auto 3DS</span>: Automatic 3DS authentication without user intervention for highest security.</li>
-                            </ul>
+                        <div class="mt-3 small">
+                            <strong>3DS Support Explained:</strong>
+                            <div class="accordion mt-2" id="3dsAccordion">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#3dsCollapse" aria-expanded="false" aria-controls="3dsCollapse">
+                                            <span class="badge bg-danger me-2">No 3DS</span>
+                                            <span class="badge bg-warning text-dark me-2">3DS v1</span>
+                                            <span class="badge bg-success me-2">3DS v2</span>
+                                            <span class="badge bg-primary">Auto 3DS</span>
+                                        </button>
+                                    </h2>
+                                    <div id="3dsCollapse" class="accordion-collapse collapse" data-bs-parent="#3dsAccordion">
+                                        <div class="accordion-body">
+                                            <p><strong>No 3DS:</strong> Cards lacking 3D Secure protection are highly vulnerable to fraud, with no additional verification during checkout.</p>
+                                            <p><strong>3DS v1 Only:</strong> First-generation protocol requiring manual verification, often causing checkout friction and abandonment.</p>
+                                            <p><strong>3DS v2:</strong> Enhanced protocol with risk-based authentication, improved user experience, and stronger fraud prevention.</p>
+                                            <p class="mb-0"><strong>Auto 3DS:</strong> Seamless authentication without user intervention, providing maximum security with minimal friction.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
