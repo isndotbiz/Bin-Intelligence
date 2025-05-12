@@ -201,15 +201,14 @@
                         <div class="mt-4 p-3 bg-dark text-white rounded border">
                             <h6 class="fw-bold text-warning"><i class="bi bi-info-circle"></i> Exploit Types Explained</h6>
                             <ul class="mb-0">
-                                <li class="mb-2"><span class="badge bg-danger">Card-Not-Present</span>: Fraud occurring in online purchases where the physical card is absent. Fraudsters acquire stolen data, perform small "test" transactions, then make larger purchases. Prevention requires AVS and device fingerprinting.</li>
+                                <li class="mb-2"><span class="badge bg-danger">Card-Not-Present</span>: Fraud in online purchases where the physical card is absent. Fraudsters use stolen data for test transactions before larger purchases.</li>
                                 
-                                <li class="mb-2"><span class="badge bg-warning" style="color: #000; font-weight: bold;">Cross-Border</span>: Exploits cards in countries different from issuance, targeting regions with weaker controls where banks have limited visibility. Requires geofencing and country-specific risk rules to prevent.</li>
+                                <li class="mb-2"><span class="badge bg-warning" style="color: #000; font-weight: bold;">Cross-Border</span>: Exploits cards in countries different from issuance, targeting regions with weaker controls where banks have limited visibility.</li>
                                 
-                                <li class="mb-2"><span class="badge bg-info">False-Positive CVV</span>: Vulnerability where banks fail to properly validate security codes, approving transactions with any CVV—correct or incorrect. Common in smaller banks with outdated systems.</li>
+                                <li class="mb-2"><span class="badge bg-info">False-Positive CVV</span>: Banks fail to properly validate security codes, approving transactions with any CVV. Common in smaller banks with outdated systems.</li>
                                 
-                                <li><span class="badge bg-primary">No Auto-3DS</span>: Cards lacking frictionless authentication that require disruptive verification steps. Without invisible risk-based authentication, these cards face higher fraud and abandonment rates.</li>
+                                <li><span class="badge bg-primary">No Auto-3DS</span>: Cards lacking frictionless authentication that require disruptive verification steps, leading to higher fraud and abandonment rates.</li>
                             </ul>
-                            <p class="mt-3 mb-0 small">BINs are classified by exploit type based on patterns observed in fraud feeds and authenticated data from Neutrino API. Cards without 3DS support (marked "Exploitable") are significantly more vulnerable to these attack vectors.</p>
                         </div>
                     </div>
                 </div>
@@ -253,11 +252,11 @@
                         BIN Classification Methodology
                     </div>
                     <div class="card-body">
-                        <p class="mb-2"><strong>Data Sources:</strong> BINs are classified based on two primary sources: fraud feeds from monitored networks and verified data from Neutrino API. Classification begins with pattern identification in known fraud incidents.</p>
+                        <p class="mb-2"><strong>Data Sources:</strong> BINs are classified based on two primary sources: fraud feeds from monitored networks and verified data from Neutrino API. Classification begins with pattern identification in known fraud incidents. BINs are classified by exploit type based on patterns observed in these feeds and authenticated Neutrino API data.</p>
                         
                         <p class="mb-2"><strong>Classification Process:</strong> Our system uses a multi-stage analysis pipeline that first identifies exploited BINs, then verifies their characteristics (issuing bank, country, card type) with Neutrino API. The exploit type is determined by analyzing transaction patterns, authentication failures, and geographic anomalies.</p>
                         
-                        <p class="mb-2"><strong>Patch Status:</strong> A BIN's patch status is determined primarily by its 3DS support level. Cards with 3DS v2 or Auto-3DS are labeled "Patched," as they have modern authentication capabilities. BINs with no 3DS or only 3DS v1 are labeled "Exploitable" and should receive enhanced monitoring.</p>
+                        <p class="mb-2"><strong>Patch Status:</strong> A BIN's patch status is determined primarily by its 3DS support level. Cards with 3DS v2 or Auto-3DS are labeled "Patched," as they have modern authentication capabilities. BINs with no 3DS or only 3DS v1 are labeled "Exploitable" and should receive enhanced monitoring. Cards without 3DS support are significantly more vulnerable to attack vectors and should be prioritized for additional security measures.</p>
                         
                         <p class="mb-0"><strong>Risk Scoring:</strong> BINs are assigned risk scores based on a weighted combination of exploit frequency, patch status, and historical fraud rates. Higher scores indicate greater vulnerability and should trigger additional verification measures during checkout.</p>
                     </div>
