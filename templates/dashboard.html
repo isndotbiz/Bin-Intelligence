@@ -982,7 +982,7 @@
             
             refreshResult.innerHTML = '<div class="alert alert-info">Refreshing BIN intelligence data... This may take a moment.</div>';
             
-            fetch('/refresh-data')
+            fetch('/refresh')
                 .then(response => response.json())
                 .then(data => {
                     // Re-enable button
@@ -996,7 +996,7 @@
                         refreshResult.innerHTML = `
                             <div class="alert alert-success">
                                 <strong>Success!</strong> Refreshed BIN intelligence data.
-                                <p>Found ${data.bins_found} BINs, classified ${data.bins_classified} BINs.</p>
+                                <p>Total BINs in the system: ${data.bins_count}</p>
                             </div>
                         `;
                         
