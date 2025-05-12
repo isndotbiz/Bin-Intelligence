@@ -1,7 +1,6 @@
 """
-Database migration script to add transaction_country and state columns to the BIN table.
-This allows for cross-border fraud detection by storing where a card was used,
-and organizing US BINs by state.
+Database migration script to add transaction_country column to the BIN table.
+This allows for cross-border fraud detection by storing where a card was used.
 """
 
 import os
@@ -47,29 +46,6 @@ def add_transaction_country_column():
         logger.error(f"Error adding transaction_country column: {str(e)}")
         return False
 
-def add_state_column():
-    """Add state column to bins table if it doesn't exist"""
-    try:
-        # Check if the column already exists
-        inspector = inspect(engine)
-        columns = [col['name'] for col in inspector.get_columns('bins')]
-        
-        if 'state' not in columns:
-            logger.info("Adding state column to bins table...")
-            # Add the column
-            with engine.begin() as conn:
-                conn.execute(text(
-                    "ALTER TABLE bins ADD COLUMN state VARCHAR(2)"
-                ))
-            logger.info("Successfully added state column")
-        else:
-            logger.info("state column already exists, skipping")
-        
-        return True
-    except Exception as e:
-        logger.error(f"Error adding state column: {str(e)}")
-        return False
-
 def reset_failed_transactions():
     """Reset any failed transactions in the database"""
     try:
@@ -86,12 +62,7 @@ if __name__ == "__main__":
     reset_failed_transactions()
     
     # Add transaction_country column
-    transaction_country_result = add_transaction_country_column()
-    
-    # Add state column
-    state_result = add_state_column()
-    
-    if transaction_country_result and state_result:
+    if add_transaction_country_column():
         logger.info("Database migration completed successfully")
     else:
         logger.error("Database migration failed")

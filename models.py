@@ -24,7 +24,6 @@ class BIN(Base):
     
     # Cross-border fraud detection
     transaction_country = Column(String(2), nullable=True)  # ISO country code of transaction location
-    state = Column(String(2), nullable=True)  # US state code (for US cards)
     
     # New fields for Neutrino API verification
     is_verified = Column(Boolean, default=False)

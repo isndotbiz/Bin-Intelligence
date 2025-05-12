@@ -317,75 +317,145 @@ def index():
     return render_template('dashboard.html')
 
 def get_bins_from_database():
-    """Query BINs from the database with improved transaction handling"""
+    """Query BINs from the database"""
     try:
-        # Use our improved dashboard handler to get BINs
-        from dashboard_handler import get_all_bins
-        raw_bins_data = get_all_bins()
+        # Get all BINs from database
+        bin_records = db_session.query(BIN).all()
         
-        # Transform the data to the format expected by the frontend
+        # Convert to list of dictionaries
         bins_data = []
-        for bin_record in raw_bins_data:
+        for bin_record in bin_records:
             # Get the primary exploit type for this BIN
-            primary_exploit = None
-            if 'exploit_types' in bin_record and bin_record['exploit_types']:
-                primary_exploit = bin_record['exploit_types'][0]['name'] if bin_record['exploit_types'] else None
+            exploit_record = db_session.query(BINExploit, ExploitType) \
+                .join(ExploitType) \
+                .filter(BINExploit.bin_id == bin_record.id) \
+                .order_by(BINExploit.frequency.desc()) \
+                .first()
             
-            # Transform to expected format
+            exploit_type = exploit_record[1].name if exploit_record else None
+            
+            # Handle datetime conversion outside the dict
+            verified_at_str = None
+            if bin_record.verified_at is not None:
+                try:
+                    verified_at_str = bin_record.verified_at.isoformat()
+                except:
+                    pass
+            
             bin_data = {
-                "BIN": bin_record.get('bin'),
-                "issuer": bin_record.get('bank_name'),
-                "brand": bin_record.get('scheme'),
-                "type": bin_record.get('card_type'),
-                "prepaid": bin_record.get('is_prepaid'),
-                "country": bin_record.get('country'),
-                "transaction_country": bin_record.get('transaction_country'),
-                "threeDS1Supported": bin_record.get('threeDS1Supported'),
-                "threeDS2supported": bin_record.get('threeDS2Supported'),
-                "patch_status": bin_record.get('patch_status'),
-                "exploit_type": primary_exploit,
-                "is_verified": bin_record.get('is_verified'),
-                "data_source": bin_record.get('data_source'),
-                "issuer_website": bin_record.get('bank_url'),
-                "issuer_phone": bin_record.get('bank_phone'),
-                "verified_at": bin_record.get('verification_date')
+                "BIN": bin_record.bin_code,
+                "issuer": bin_record.issuer,
+                "brand": bin_record.brand,
+                "type": bin_record.card_type,
+                "prepaid": bin_record.prepaid,
+                "country": bin_record.country,
+                "transaction_country": bin_record.transaction_country,
+                "threeDS1Supported": bin_record.threeds1_supported,
+                "threeDS2supported": bin_record.threeds2_supported,
+                "patch_status": bin_record.patch_status,
+                "exploit_type": exploit_type,
+                "is_verified": bin_record.is_verified,
+                "data_source": bin_record.data_source,
+                "issuer_website": bin_record.issuer_website,
+                "issuer_phone": bin_record.issuer_phone,
+                "verified_at": verified_at_str
             }
             bins_data.append(bin_data)
         
-        logger.info(f"Loaded {len(bins_data)} BINs from database using improved dashboard handler")
+        logger.info(f"Loaded {len(bins_data)} BINs from database")
         return bins_data
+        
     except Exception as e:
         logger.error(f"Error loading BINs from database: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
-        # Return empty list if error occurs
-        return []
+        # Fallback to file if database query fails
+        return load_bin_data()
 
 def get_database_statistics():
     """Get statistics from the database"""
     try:
-        # Use our improved dashboard handler to get statistics
-        from dashboard_handler import get_dashboard_statistics
-        stats = get_dashboard_statistics()
-        logger.info("Successfully retrieved dashboard statistics using improved handler")
-        return stats
-    except Exception as e:
-        logger.error(f"Error retrieving database statistics: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
-        # Return default empty stats
-        return {
-            'total_bins': 0,
-            'verified_bins': 0,
-            'verification_percentage': 0,
-            'exploitable_bins': 0,
-            'patched_bins': 0,
-            'exploitable_percentage': 0,
-            'bins_by_scheme': {},
-            'bins_by_country': {},
-            'bins_by_transaction_country': {},
-            'bins_by_state': {}
+        total_bins = db_session.query(func.count(BIN.id)).scalar() or 0
+        
+        # Get patch status counts
+        patch_status = {}
+        patch_results = db_session.query(BIN.patch_status, func.count(BIN.id)) \
+            .group_by(BIN.patch_status).all()
+        for status, count in patch_results:
+            patch_status[status or "unknown"] = count
+        
+        # Get brand counts - normalize names to avoid duplicates
+        brand_mapping = {
+            'AMEX': 'AMERICAN EXPRESS',
+            'AMERICAN EXPRESS': 'AMERICAN EXPRESS',
+            'MASTERCARD': 'MASTERCARD', 
+            'VISA': 'VISA',
+            'DISCOVER': 'DISCOVER'
         }
+        
+        # Get all brands from database
+        brand_results = db_session.query(BIN.brand, func.count(BIN.id)) \
+            .group_by(BIN.brand).all()
+            
+        # Normalize and combine brands
+        normalized_brands = {}
+        for brand, count in brand_results:
+            brand_key = brand_mapping.get((brand or "").upper(), brand or "unknown")
+            normalized_brands[brand_key] = normalized_brands.get(brand_key, 0) + count
+            
+        # Sort by count and limit to top 10
+        brands = dict(sorted(normalized_brands.items(), key=lambda x: x[1], reverse=True)[:10])
+        
+        # Get country counts
+        countries = {}
+        country_results = db_session.query(BIN.country, func.count(BIN.id)) \
+            .group_by(BIN.country).order_by(func.count(BIN.id).desc()).limit(10).all()
+        for country, count in country_results:
+            countries[country or "unknown"] = count
+        
+        # Get exploit type counts
+        exploit_types = {}
+        exploit_results = db_session.query(ExploitType.name, func.count(BINExploit.id)) \
+            .join(BINExploit).group_by(ExploitType.name) \
+            .order_by(func.count(BINExploit.id).desc()).all()
+        for name, count in exploit_results:
+            exploit_types[name] = count
+        
+        # Get 3DS support counts
+        threeds1_count = db_session.query(func.count(BIN.id)) \
+            .filter(BIN.threeds1_supported == True).scalar() or 0
+        threeds2_count = db_session.query(func.count(BIN.id)) \
+            .filter(BIN.threeds2_supported == True).scalar() or 0
+        no_3ds_count = db_session.query(func.count(BIN.id)) \
+            .filter(BIN.threeds1_supported == False, BIN.threeds2_supported == False).scalar() or 0
+            
+        # Get verification status counts
+        verified_count = db_session.query(func.count(BIN.id)) \
+            .filter(BIN.is_verified == True).scalar() or 0
+        
+        # Prepare statistics
+        stats = {
+            'total_bins': total_bins,
+            'exploit_types': exploit_types,
+            'patch_status': patch_status,
+            'brands': brands,
+            'countries': countries,
+            'verification': {
+                'verified': verified_count,
+                'unverified': total_bins - verified_count
+            },
+            '3ds_support': {
+                '3DS_v1': threeds1_count,
+                '3DS_v2': threeds2_count,
+                'No_3DS': no_3ds_count
+            }
+        }
+        
+        return stats
+        
+    except Exception as e:
+        logger.error(f"Error getting statistics from database: {str(e)}")
+        # Fallback to file-based stats if database query fails
+        bins_data = load_bin_data()
+        return get_bin_statistics(bins_data)
 
 @app.route('/api/bins')
 def api_bins():
@@ -395,39 +465,20 @@ def api_bins():
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 200, type=int)  # Default to 200 BINs per page
         
-        # Use our improved dashboard handler to get BINs
-        from dashboard_handler import get_all_bins
-        bins_data = get_all_bins()
-        logger.info(f"Loaded {len(bins_data)} BINs from database using improved dashboard handler")
-        
-        # Add filter parameters
-        brand_filter = request.args.get('brand', '')
-        country_filter = request.args.get('country', '')
-        exploit_filter = request.args.get('exploit', '')
-        state_filter = request.args.get('state', '')
-        
-        # Apply filters if provided
-        filtered_bins = bins_data
-        if brand_filter:
-            filtered_bins = [b for b in filtered_bins if b.get('brand', '').upper() == brand_filter.upper()]
-            
-        if country_filter:
-            filtered_bins = [b for b in filtered_bins if b.get('country', '').upper() == country_filter.upper()]
-            
-        if exploit_filter:
-            filtered_bins = [b for b in filtered_bins if exploit_filter in b.get('exploit_types', [])]
-            
-        if state_filter:
-            filtered_bins = [b for b in filtered_bins if b.get('state', '').upper() == state_filter.upper()]
+        # First try to get BINs from database
+        bins_data = get_bins_from_database()
+        if not bins_data:
+            # If no data in database, fallback to file
+            bins_data = load_bin_data()
         
         # Calculate total pages
-        total_bins = len(filtered_bins)
+        total_bins = len(bins_data)
         total_pages = (total_bins + per_page - 1) // per_page  # Ceiling division
         
         # Apply pagination
         start_idx = (page - 1) * per_page
         end_idx = start_idx + per_page
-        paginated_bins = filtered_bins[start_idx:end_idx]
+        paginated_bins = bins_data[start_idx:end_idx]
         
         # Prepare response with pagination metadata
         response = {
@@ -443,87 +494,67 @@ def api_bins():
         return jsonify(response)
     except Exception as e:
         logger.error(f"Error in api_bins: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/stats')
 def api_stats():
     """API endpoint to get statistics"""
     try:
-        # Use our improved dashboard handler to get statistics
-        from dashboard_handler import get_dashboard_statistics
-        stats = get_dashboard_statistics()
-        logger.info("Successfully retrieved dashboard statistics")
+        # First try to get stats from database
+        stats = get_database_statistics()
+        if not stats or not stats.get('total_bins'):
+            # If no data in database, fallback to file
+            bins_data = load_bin_data()
+            stats = get_bin_statistics(bins_data)
         return jsonify(stats)
     except Exception as e:
         logger.error(f"Error in api_stats: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
-        return jsonify({"error": str(e)}), 500
-        
-@app.route('/api/cross-border-stats')
-def api_cross_border_stats():
-    """
-    API endpoint to get statistics on cross-border fraud
-    Shows the top countries with cards exploited in a specific transaction country
-    
-    Query parameters:
-    - transaction_country: The country where exploited cards are being used (default: 'US')
-    - limit: Number of countries to return (default: 5)
-    """
-    try:
-        transaction_country = request.args.get('transaction_country', default='US', type=str).upper()
-        limit = request.args.get('limit', default=5, type=int)
-        
-        # Use our improved dashboard handler to get cross-border stats
-        from dashboard_handler import get_cross_border_stats
-        stats = get_cross_border_stats(transaction_country=transaction_country, limit=limit)
-        logger.info(f"Successfully retrieved cross-border stats for {transaction_country}")
-        
-        return jsonify(stats)
-    except Exception as e:
-        logger.error(f"Error in api_cross_border_stats: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/scan-history')
 def api_scan_history():
     """API endpoint to get scan history"""
     try:
-        # Use our improved dashboard handler to get scan history
-        from dashboard_handler import get_scan_history
-        history_data = get_scan_history()
-        logger.info(f"Successfully retrieved {len(history_data)} scan history records")
+        # Get scan history records
+        scan_records = db_session.query(ScanHistory).order_by(ScanHistory.scan_date.desc()).limit(10).all()
+        
+        # Convert to list of dictionaries
+        history_data = []
+        for record in scan_records:
+            history_data.append({
+                'id': record.id,
+                'scan_date': record.scan_date.isoformat(),
+                'source': record.source,
+                'bins_found': record.bins_found,
+                'bins_classified': record.bins_classified,
+                'scan_parameters': record.scan_parameters
+            })
         
         return jsonify(history_data)
     except Exception as e:
         logger.error(f"Error in api_scan_history: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/exploits')
 def api_exploits():
     """API endpoint to get exploit types"""
     try:
-        # Use our improved dashboard handler to get exploit types
-        from dashboard_handler import get_exploit_types
-        exploit_data = get_exploit_types()
-        logger.info(f"Successfully retrieved {len(exploit_data)} exploit types")
+        # Get all exploit types
+        exploit_types = db_session.query(ExploitType).all()
+        
+        # Convert to list of dictionaries
+        exploit_data = []
+        for et in exploit_types:
+            exploit_data.append({
+                'id': et.id,
+                'name': et.name,
+                'description': et.description
+            })
         
         return jsonify(exploit_data)
     except Exception as e:
         logger.error(f"Error in api_exploits: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
-        
-        
-# Import and register the blocklist API handler
-from api_blocklist import handle_blocklist_request
-handle_blocklist_request(app)
 
 @app.route('/verify-bin/<bin_code>')
 def verify_bin(bin_code):
@@ -623,31 +654,142 @@ def verify_bin(bin_code):
 def generate_more_bins():
     """Generate and verify additional BINs using Neutrino API"""
     try:
-        # Use our simplified BIN generator for better reliability
-        from fixed_bin_generator import generate_bins
+        # Count existing BINs in the database
+        existing_bins_count = db_session.query(func.count(BIN.id)).scalar() or 0
+        logger.info(f"Currently have {existing_bins_count} BINs in the database")
         
-        # Get parameters from request
+        # Process 20 BINs at a time to avoid timeouts (client can call multiple times)
         count = min(int(request.args.get('count', 10)), 20)
+        
+        # Get cross-border flag - default to True to generate cross-border BINs
         include_cross_border = request.args.get('cross_border', 'true').lower() == 'true'
         
-        logger.info(f"Starting BIN generation: count={count}, cross_border={include_cross_border}")
+        logger.info(f"Generating {count} BINs (limited to prevent timeouts)")
+        if include_cross_border:
+            logger.info("Including cross-border fraud detection")
         
-        # Generate BINs with the simplified function
-        result = generate_bins(count=count, include_cross_border=include_cross_border)
+        # Get all existing BINs to avoid duplicates
+        existing_bins = set(bin_record.bin_code for bin_record in db_session.query(BIN.bin_code).all())
         
-        # Log result for debugging
-        logger.info(f"BIN generation result: {result}")
-        
-        # Return appropriate response based on result status
-        if result.get('status') == 'success':
-            return jsonify(result)
-        else:
-            return jsonify(result), 400
+        # Known vulnerable BIN prefixes by issuer (based on historical exploits)
+        # These prefixes are more likely to be exploitable and lack proper 3DS support
+        known_vulnerable_prefixes = [
+            # Visa (4-series) - specific prefixes known to have lower 3DS adoption
+            "404", "411", "422", "424", "427", "431", "438", "440", "446", "448", 
+            "449", "451", "453", "459", "462", "465", "474", "475", "476", "485",
             
+            # Mastercard (5-series) - specific prefixes with historically lower security
+            "510", "512", "517", "518", "523", "528", "530", "539", "542", "547",
+            "549", "555", "559",
+            
+            # American Express (3-series) - specific prefixes with lower 3DS adoption
+            "340", "346", "373", "374",
+            
+            # Discover (6-series) - specific prefixes known to have lower 3DS adoption
+            "601", "644", "649", "650", "651", "654", "659", "690"
+        ]
+        
+        logger.info(f"Generating {count} new verified BINs using Neutrino API (focusing on potentially exploitable BINs)")
+        
+        # Generate BIN combinations to try
+        import random
+        bins_to_verify = []
+        
+        # Combine historical vulnerable BINs with some truly random ones for diversity
+        for _ in range(count * 2):  # Generate more than needed to account for verification failures
+            # 80% of the time use known vulnerable prefixes, 20% of the time use random generation
+            if random.random() < 0.8 and known_vulnerable_prefixes:
+                # Use known vulnerable prefixes
+                prefix = random.choice(known_vulnerable_prefixes)
+                
+                # Complete the 6-digit BIN
+                remaining_digits = 6 - len(prefix)
+                bin_code = prefix + ''.join([str(random.randint(0, 9)) for _ in range(remaining_digits)])
+            else:
+                # Generate completely random BIN from major card networks
+                first_digit = random.choice(['3', '4', '5', '6'])
+                if first_digit == '3':
+                    # For Amex, use only 34 or 37 as prefix
+                    second_digit = random.choice(['4', '7'])
+                    bin_code = '3' + second_digit + ''.join([str(random.randint(0, 9)) for _ in range(4)])
+                elif first_digit == '5':
+                    # For Mastercard, make sure second digit is 1-5
+                    second_digit = str(random.randint(1, 5))
+                    bin_code = '5' + second_digit + ''.join([str(random.randint(0, 9)) for _ in range(4)])
+                elif first_digit == '6':
+                    # For Discover, use only 60, 64, 65 as prefix
+                    second_digit = random.choice(['0', '4', '5'])
+                    bin_code = '6' + second_digit + ''.join([str(random.randint(0, 9)) for _ in range(4)])
+                else:
+                    # For Visa (4-series), any random 5 digits will do
+                    bin_code = '4' + ''.join([str(random.randint(0, 9)) for _ in range(5)])
+            
+            if bin_code not in existing_bins and bin_code not in bins_to_verify:
+                bins_to_verify.append(bin_code)
+        
+        # Create a BIN enricher to verify and enrich BINs with real data from Neutrino API
+        bin_enricher = BinEnricher()
+        
+        # Process BINs in batches to improve performance
+        logger.info(f"Verifying {len(bins_to_verify)} BINs with Neutrino API")
+        enriched_bins = bin_enricher.enrich_bins_batch(bins_to_verify[:count*2])
+        
+        if not enriched_bins:
+            return jsonify({'status': 'error', 'message': 'No BINs could be verified with Neutrino API. Please check your API credentials.'}), 400
+        
+        # Limit to requested count    
+        enriched_bins = enriched_bins[:count]
+        logger.info(f"Successfully verified {len(enriched_bins)} BINs with Neutrino API")
+        
+        # Add cross-border exploit classification to some of the BINs if requested
+        if include_cross_border:
+            # Get all exploit types
+            exploit_types = db_session.query(ExploitType).all()
+            exploit_type_map = {et.name: et for et in exploit_types}
+            
+            # Set cross-border exploit type to approximately 40% of BINs
+            for i, bin_data in enumerate(enriched_bins):
+                if random.random() < 0.4:
+                    # Simulate cross-border fraud by setting a transaction location
+                    # that differs from the card's issuing country
+                    card_country = bin_data.get("country", "US")
+                    
+                    # List of common transaction countries different from card's country
+                    transaction_countries = ["US", "CA", "GB", "FR", "DE", "IT", "ES", "JP", "SG", "AU"]
+                    # Remove the card's own country from the list
+                    if card_country in transaction_countries:
+                        transaction_countries.remove(card_country)
+                    
+                    # Select a random transaction country
+                    transaction_country = random.choice(transaction_countries)
+                    
+                    bin_data["transaction_country"] = transaction_country
+                    bin_data["exploit_type"] = "cross-border"
+                    
+                    logger.info(f"BIN {bin_data['BIN']} flagged as cross-border: " + 
+                                f"card from {card_country}, transaction in {transaction_country}")
+                else:
+                    # For other BINs, assign random exploit types from our list (excluding cross-border)
+                    available_types = [
+                        "skimming", "card-not-present", "track-data-compromise", 
+                        "malware-compromise", "raw-dump", "cvv-compromise"
+                    ]
+                    bin_data["exploit_type"] = random.choice(available_types)
+            
+        # Save the verified BINs to the database
+        created, updated = save_bins_to_database(enriched_bins)
+        
+        # Return success response
+        total_bins = db_session.query(BIN).count()
+        return jsonify({
+            'status': 'success',
+            'new_bins': created,
+            'updated_bins': updated,
+            'total_bins': total_bins
+        })
+        
     except Exception as e:
         logger.error(f"Error generating verified BINs: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/refresh')
@@ -658,36 +800,6 @@ def refresh_data():
     
     bins_data = run_bin_intelligence_system(top_n=top_n, sample_pages=sample_pages)
     return jsonify({'status': 'success', 'bins_count': len(bins_data)})
-
-@app.route('/download-bin-database')
-def download_bin_database():
-    """Download the complete BIN database from Neutrino API"""
-    try:
-        # Only allow this endpoint to be called by authenticated users in production
-        
-        from bin_downloader import BINDownloader
-        
-        downloader = BINDownloader()
-        bin_count = downloader.download_and_process_bins()
-        
-        if bin_count > 0:
-            return jsonify({
-                "status": "success",
-                "message": f"Downloaded and processed {bin_count} BINs from Neutrino API",
-                "bins_count": bin_count
-            })
-        else:
-            return jsonify({
-                "status": "error",
-                "message": "Failed to download BIN database. Check logs for details."
-            }), 500
-            
-    except Exception as e:
-        logger.error(f"Error downloading BIN database: {str(e)}")
-        return jsonify({
-            "status": "error", 
-            "message": f"Error: {str(e)}"
-        }), 500
 
 def main():
     """Main function to run the BIN Intelligence System"""
