@@ -126,98 +126,111 @@ def process_exploited_bins(top_n: int = 100, sample_pages: int = 5) -> List[Dict
     return enriched_bins
 
 def save_bins_to_database(enriched_bins):
-    """Save the enriched BINs to the database"""
+    """Save the enriched BINs to the database with improved connection handling"""
     logger.info("Saving BINs to database...")
     
-    scan_record = ScanHistory(
-        source="pastebin",
-        bins_found=len(enriched_bins),
-        bins_classified=len(enriched_bins),
-        scan_parameters=json.dumps({"top_n": len(enriched_bins), "sample_pages": 5})
-    )
-    db_session.add(scan_record)
-    
-    # Get all exploit types from DB for lookup
-    exploit_types = {et.name: et for et in db_session.query(ExploitType).all()}
-    
-    # Track how many bins were created/updated
-    created_count = 0
-    updated_count = 0
-    
-    for bin_data in enriched_bins:
-        bin_code = bin_data.get("BIN")
+    # Create a fresh session to avoid connection issues
+    try:
+        Session = sessionmaker(bind=engine)
+        session = Session()
         
-        # Skip if no BIN code
-        if not bin_code:
-            continue
+        scan_record = ScanHistory(
+            source="pastebin",
+            bins_found=len(enriched_bins),
+            bins_classified=len(enriched_bins),
+            scan_parameters=json.dumps({"top_n": len(enriched_bins), "sample_pages": 5})
+        )
+        session.add(scan_record)
+        
+        # Get all exploit types from DB for lookup
+        exploit_types = {et.name: et for et in session.query(ExploitType).all()}
+        
+        # Track how many bins were created/updated
+        created_count = 0
+        updated_count = 0
+        
+        for bin_data in enriched_bins:
+            bin_code = bin_data.get("BIN")
             
-        # Check if BIN already exists in database
-        bin_record = db_session.query(BIN).filter(BIN.bin_code == bin_code).first()
-        
-        if not bin_record:
-            # Create new BIN record
-            bin_record = BIN(
-                bin_code=bin_code,
-                issuer=bin_data.get("issuer"),
-                brand=bin_data.get("brand"),
-                card_type=bin_data.get("type"),
-                prepaid=bin_data.get("prepaid", False),
-                country=bin_data.get("country"),
-                transaction_country=bin_data.get("transaction_country"),
-                threeds1_supported=bin_data.get("threeDS1Supported", False),
-                threeds2_supported=bin_data.get("threeDS2supported", False),
-                patch_status=bin_data.get("patch_status")
-            )
-            db_session.add(bin_record)
-            created_count += 1
-            # Flush to get the bin_id
-            db_session.flush()
-        else:
-            # Update existing BIN record
-            new_data = {
-                "issuer": bin_data.get("issuer", bin_record.issuer),
-                "brand": bin_data.get("brand", bin_record.brand),
-                "card_type": bin_data.get("type", bin_record.card_type),
-                "prepaid": bin_data.get("prepaid", bin_record.prepaid),
-                "country": bin_data.get("country", bin_record.country),
-                "transaction_country": bin_data.get("transaction_country", bin_record.transaction_country),
-                "threeds1_supported": bin_data.get("threeDS1Supported", bin_record.threeds1_supported),
-                "threeds2_supported": bin_data.get("threeDS2supported", bin_record.threeds2_supported),
-                "patch_status": bin_data.get("patch_status", bin_record.patch_status),
-                "updated_at": datetime.utcnow()
-            }
-            # Update with setattr to avoid LSP errors
-            for key, value in new_data.items():
-                setattr(bin_record, key, value)
-            updated_count += 1
-        
-        # Add exploit type association if available
-        exploit_type_name = bin_data.get("exploit_type")
-        if exploit_type_name and exploit_type_name in exploit_types:
-            # Check if this BIN already has this exploit type
-            existing_exploit = db_session.query(BINExploit).filter(
-                BINExploit.bin_id == bin_record.id,
-                BINExploit.exploit_type_id == exploit_types[exploit_type_name].id
-            ).first()
+            # Skip if no BIN code
+            if not bin_code:
+                continue
+                
+            # Check if BIN already exists in database
+            bin_record = session.query(BIN).filter(BIN.bin_code == bin_code).first()
             
-            if existing_exploit:
-                # Update the frequency and last_seen using setattr to avoid LSP errors
-                setattr(existing_exploit, 'frequency', existing_exploit.frequency + 1)
-                setattr(existing_exploit, 'last_seen', datetime.utcnow())
-            else:
-                # Create new association
-                exploit_record = BINExploit(
-                    bin_id=bin_record.id,
-                    exploit_type_id=exploit_types[exploit_type_name].id,
-                    frequency=1
+            if not bin_record:
+                # Create new BIN record
+                bin_record = BIN(
+                    bin_code=bin_code,
+                    issuer=bin_data.get("issuer"),
+                    brand=bin_data.get("brand"),
+                    card_type=bin_data.get("type"),
+                    prepaid=bin_data.get("prepaid", False),
+                    country=bin_data.get("country"),
+                    transaction_country=bin_data.get("transaction_country"),
+                    threeds1_supported=bin_data.get("threeDS1Supported", False),
+                    threeds2_supported=bin_data.get("threeDS2supported", False),
+                    patch_status=bin_data.get("patch_status")
                 )
-                db_session.add(exploit_record)
-    
-    # Commit all changes
-    db_session.commit()
-    
-    logger.info(f"Database update complete: {created_count} BINs created, {updated_count} BINs updated")
-    return created_count, updated_count
+                session.add(bin_record)
+                created_count += 1
+                # Flush to get the bin_id
+                session.flush()
+            else:
+                # Update existing BIN record
+                new_data = {
+                    "issuer": bin_data.get("issuer", bin_record.issuer),
+                    "brand": bin_data.get("brand", bin_record.brand),
+                    "card_type": bin_data.get("type", bin_record.card_type),
+                    "prepaid": bin_data.get("prepaid", bin_record.prepaid),
+                    "country": bin_data.get("country", bin_record.country),
+                    "transaction_country": bin_data.get("transaction_country", bin_record.transaction_country),
+                    "threeds1_supported": bin_data.get("threeDS1Supported", bin_record.threeds1_supported),
+                    "threeds2_supported": bin_data.get("threeDS2supported", bin_record.threeds2_supported),
+                    "patch_status": bin_data.get("patch_status", bin_record.patch_status),
+                    "updated_at": datetime.utcnow()
+                }
+                # Update with setattr to avoid LSP errors
+                for key, value in new_data.items():
+                    setattr(bin_record, key, value)
+                updated_count += 1
+            
+            # Add exploit type association if available
+            exploit_type_name = bin_data.get("exploit_type")
+            if exploit_type_name and exploit_type_name in exploit_types:
+                # Check if this BIN already has this exploit type
+                existing_exploit = session.query(BINExploit).filter(
+                    BINExploit.bin_id == bin_record.id,
+                    BINExploit.exploit_type_id == exploit_types[exploit_type_name].id
+                ).first()
+                
+                if existing_exploit:
+                    # Update the frequency and last_seen using setattr to avoid LSP errors
+                    setattr(existing_exploit, 'frequency', existing_exploit.frequency + 1)
+                    setattr(existing_exploit, 'last_seen', datetime.utcnow())
+                else:
+                    # Create new association
+                    exploit_record = BINExploit(
+                        bin_id=bin_record.id,
+                        exploit_type_id=exploit_types[exploit_type_name].id,
+                        frequency=1
+                    )
+                    session.add(exploit_record)
+        
+        # Commit all changes
+        session.commit()
+        
+        logger.info(f"Database update complete: {created_count} BINs created, {updated_count} BINs updated")
+        return created_count, updated_count
+    except Exception as e:
+        if session:
+            session.rollback()
+        logger.error(f"Database error in save_bins_to_database: {str(e)}")
+        raise
+    finally:
+        if session:
+            session.close()
 
 def run_bin_intelligence_system(top_n=100, sample_pages=5):
     """Run the BIN Intelligence System and return the enriched BINs"""
