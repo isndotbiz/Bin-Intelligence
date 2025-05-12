@@ -805,7 +805,7 @@ def search_vulnerable_bins():
                 
             # Certain card types are more vulnerable
             card_type = bin_record.card_type if bin_record.card_type else ""
-            if card_type.lower() in ['debit', 'prepaid']:
+            if card_type and card_type.lower() in ['debit', 'prepaid']:
                 vulnerability_score += 1
                 
             # Create the bin dictionary

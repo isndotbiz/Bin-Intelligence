@@ -471,6 +471,18 @@
             '#0d6efd', '#dc3545', '#198754', '#0dcaf0', '#6c757d',
             '#6610f2', '#fd7e14', '#ffc107', '#20c997', '#d63384'
         ];
+        
+        // Define vulnerability levels with colors for CVV vulnerability scanner
+        const vulnerabilityLevels = {
+            1: {text: "Very Low", color: "#28a745"},  // Green
+            2: {text: "Low", color: "#5cb85c"},       // Light Green
+            3: {text: "Moderate", color: "#ffc107"},  // Yellow
+            4: {text: "Medium", color: "#fd7e14"},    // Orange
+            5: {text: "High", color: "#dc3545"},      // Red
+            6: {text: "Very High", color: "#c82333"}, // Dark Red
+            7: {text: "Critical", color: "#721c24"},  // Darker Red
+            8: {text: "Extreme", color: "#450a0f"}    // Very Dark Red
+        };
 
         // Show loading spinners
         document.getElementById('exploit-spinner').style.display = 'flex';
@@ -1235,6 +1247,79 @@
             countriesChart.data.datasets[0].data = countryValues;
             countriesChart.update();
         }
+        
+        // Vulnerability scanner button click handler
+        document.getElementById('scan-vulnerable-bins-btn').addEventListener('click', function() {
+            const vulnerabilityResult = document.getElementById('vulnerability-result');
+            const tableContainer = document.getElementById('vulnerability-table-container');
+            const tableBody = document.getElementById('vulnerability-table-body');
+            const limit = document.getElementById('vulnerability-limit').value;
+            
+            // Disable button during API call
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Scanning...';
+            
+            vulnerabilityResult.innerHTML = '<div class="alert alert-info">Scanning for vulnerable BINs... This may take a moment.</div>';
+            tableContainer.style.display = 'none';
+            
+            fetch(`/search-vulnerable-bins?limit=${limit}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Re-enable button
+                    this.disabled = false;
+                    this.innerHTML = '<i class="bi bi-shield-exclamation"></i> Scan for Vulnerable BINs';
+                    
+                    if (data.status === 'error' || data.message) {
+                        vulnerabilityResult.innerHTML = `<div class="alert alert-danger">${data.message || 'Unknown error occurred'}</div>`;
+                        tableContainer.style.display = 'none';
+                    } else if (!data.vulnerable_bins || data.vulnerable_bins.length === 0) {
+                        vulnerabilityResult.innerHTML = '<div class="alert alert-success">No vulnerable BINs found that match the criteria.</div>';
+                        tableContainer.style.display = 'none';
+                    } else {
+                        // Show success message with count
+                        vulnerabilityResult.innerHTML = `
+                            <div class="alert alert-warning">
+                                <strong>Found ${data.count} potentially vulnerable BINs</strong> that lack proper security measures and may be susceptible to card number generation attacks.
+                            </div>
+                        `;
+                        
+                        // Clear existing table rows
+                        tableBody.innerHTML = '';
+                        
+                        // Add rows for each vulnerable BIN
+                        data.vulnerable_bins.forEach(bin => {
+                            const row = document.createElement('tr');
+                            
+                            // Determine vulnerability level color and text
+                            const score = bin.vulnerability_score;
+                            const level = vulnerabilityLevels[Math.min(Math.floor(score), 8)];
+                            
+                            row.innerHTML = `
+                                <td><strong>${bin.bin_code}</strong></td>
+                                <td>${bin.issuer || 'Unknown'}</td>
+                                <td>${bin.brand || 'Unknown'}</td>
+                                <td>${bin.card_type || 'Unknown'}</td>
+                                <td>${bin.country || 'Unknown'}</td>
+                                <td>${bin.threeds1_supported ? '✓' : '<span class="text-danger">✗</span>'}</td>
+                                <td>${bin.threeds2_supported ? '✓' : '<span class="text-danger">✗</span>'}</td>
+                                <td><span class="badge" style="background-color: ${level.color};">${score} - ${level.text}</span></td>
+                            `;
+                            
+                            tableBody.appendChild(row);
+                        });
+                        
+                        // Show the table
+                        tableContainer.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    this.disabled = false;
+                    this.innerHTML = '<i class="bi bi-shield-exclamation"></i> Scan for Vulnerable BINs';
+                    vulnerabilityResult.innerHTML = '<div class="alert alert-danger">Error scanning for vulnerable BINs. Please try again.</div>';
+                    tableContainer.style.display = 'none';
+                });
+        });
     </script>
 </body>
 </html>
