@@ -130,6 +130,7 @@ def save_bins_to_database(enriched_bins):
     logger.info("Saving BINs to database...")
     
     # Create a fresh session to avoid connection issues
+    session = None
     try:
         Session = sessionmaker(bind=engine)
         session = Session()
@@ -760,9 +761,16 @@ def verify_bin(bin_code):
 @app.route('/generate-bins')
 def generate_more_bins():
     """Generate and verify additional BINs using Neutrino API"""
+    # Create a fresh database session to avoid connection issues
+    Session = sessionmaker(bind=engine)
+    session = None
+    
     try:
+        # Create a fresh session
+        session = Session()
+        
         # Count existing BINs in the database
-        existing_bins_count = db_session.query(func.count(BIN.id)).scalar() or 0
+        existing_bins_count = session.query(func.count(BIN.id)).scalar() or 0
         logger.info(f"Currently have {existing_bins_count} BINs in the database")
         
         # Process 20 BINs at a time to avoid timeouts (client can call multiple times)
@@ -776,7 +784,7 @@ def generate_more_bins():
             logger.info("Including cross-border fraud detection")
         
         # Get all existing BINs to avoid duplicates
-        existing_bins = set(bin_record.bin_code for bin_record in db_session.query(BIN.bin_code).all())
+        existing_bins = set(bin_record.bin_code for bin_record in session.query(BIN.bin_code).all())
         
         # Known vulnerable BIN prefixes by issuer (based on historical exploits)
         # These prefixes are more likely to be exploitable and lack proper 3DS support
@@ -851,7 +859,7 @@ def generate_more_bins():
         # Add cross-border exploit classification to some of the BINs if requested
         if include_cross_border:
             # Get all exploit types
-            exploit_types = db_session.query(ExploitType).all()
+            exploit_types = session.query(ExploitType).all()
             exploit_type_map = {et.name: et for et in exploit_types}
             
             # Set cross-border exploit type to approximately 40% of BINs
@@ -880,11 +888,13 @@ def generate_more_bins():
                     e_commerce_exploit_types = ["card-not-present", "false-positive-cvv", "no-auto-3ds"]
                     bin_data["exploit_type"] = random.choice(e_commerce_exploit_types)
             
-        # Save the verified BINs to the database
+        # Save the verified BINs to the database with our improved function
         created, updated = save_bins_to_database(enriched_bins)
         
+        # Get total BIN count using our fresh session for reliability
+        total_bins = session.query(func.count(BIN.id)).scalar() or 0
+        
         # Return success response
-        total_bins = db_session.query(BIN).count()
         return jsonify({
             'status': 'success',
             'new_bins': created,
@@ -893,8 +903,13 @@ def generate_more_bins():
         })
         
     except Exception as e:
+        if session:
+            session.rollback()
         logger.error(f"Error generating verified BINs: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        if session:
+            session.close()
 
 @app.route('/refresh')
 def refresh_data():
