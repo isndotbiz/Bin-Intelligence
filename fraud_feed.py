@@ -14,23 +14,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Define keyword to exploit type mapping
+# Define keyword to exploit type mapping - focus only on CNP for e-commerce
 KEYWORD_TO_EXPLOIT_TYPE = {
-    "skim": "skimming",
-    "atm": "skimming",
+    # Card-not-present related keywords
     "cnp": "card-not-present",
     "ecom": "card-not-present",
     "online": "card-not-present",
-    "gift": "gift-card-fraud",
-    "voucher": "gift-card-fraud",
-    "chargeback": "unauthorized-chargebacks",
-    "fraud": "unauthorized-chargebacks",
-    "dump": "track-data-compromise",
-    "track": "track-data-compromise",
-    "malware": "malware-compromise", 
-    "raw": "raw-dump",
-    "fullz": "identity-theft",
-    "cvv": "cvv-compromise"
+    "shop": "card-not-present",
+    "checkout": "card-not-present",
+    "purchase": "card-not-present",
+    "merchant": "card-not-present",
+    "authorization": "card-not-present",
+    "payment": "card-not-present",
+    "gateway": "card-not-present",
+    "digital": "card-not-present",
+    "internet": "card-not-present",
+    "web": "card-not-present",
+    "processor": "card-not-present",
+    "transaction": "card-not-present",
+    "website": "card-not-present",
+    "virtual": "card-not-present"
 }
 
 # PAN regex pattern - matches credit card numbers with optional separators

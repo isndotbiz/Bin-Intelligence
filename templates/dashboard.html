@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIN Intelligence Dashboard</title>
+    <title>E-Commerce BIN Intelligence Dashboard</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
@@ -137,19 +137,6 @@
                             <div class="accordion mt-2" id="exploitTypesAccordion">
                                 <div class="accordion-item">
                                     <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#skimmingCollapse" aria-expanded="false" aria-controls="skimmingCollapse">
-                                            <strong>Skimming</strong>
-                                        </button>
-                                    </h2>
-                                    <div id="skimmingCollapse" class="accordion-collapse collapse" data-bs-parent="#exploitTypesAccordion">
-                                        <div class="accordion-body">
-                                            Skimming involves the physical capture of card data through specialized hardware installed on legitimate payment devices. Common targets include ATMs, gas pumps, and point-of-sale terminals. These devices create a perfect replica of the original terminal while secretly recording magnetic stripe data and PINs. In our system, BINs flagged with this exploit are frequently associated with in-person fraud at physical locations. The vulnerability exists primarily in cards lacking chip technology (EMV) and relying solely on magnetic stripe transactions. Skimming attacks target specific geographic locations, creating clusters of compromised cards from the same issuing bank with sequential BINs. These attacks often affect cards without 3DS protection and can be identified by our system through pattern recognition in transaction data. Cards shown as "Exploitable" in our system are at particularly high risk, as they lack the cryptographic security verification that 3DS provides. Financial institutions issuing cards with these BINs should implement additional verification steps for in-person transactions and encourage cardholders to monitor statements for suspicious activity, particularly small test charges which often precede larger fraudulent transactions.
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
                                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cardNotPresentCollapse" aria-expanded="false" aria-controls="cardNotPresentCollapse">
                                             <strong>Card-Not-Present</strong>
                                         </button>
@@ -163,58 +150,6 @@
                                 
                                 <div class="accordion-item">
                                     <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#trackDataCollapse" aria-expanded="false" aria-controls="trackDataCollapse">
-                                            <strong>Track-Data-Compromise</strong>
-                                        </button>
-                                    </h2>
-                                    <div id="trackDataCollapse" class="accordion-collapse collapse" data-bs-parent="#exploitTypesAccordion">
-                                        <div class="accordion-body">
-                                            Track-Data-Compromise involves the theft of information encoded on a payment card's magnetic stripe, which contains critical account data in Track 1 and Track 2 formats. This data includes the cardholder's name, card number, expiration date, and various discretionary data used during transaction authorization. In our system, BINs vulnerable to this exploit typically show patterns of card cloning, where identical magnetic stripe data appears simultaneously in multiple geographic locations. The compromise often occurs through point-of-sale malware specifically designed to harvest and exfiltrate track data from memory when it's briefly decrypted during processing. Cards from issuers lacking strong cryptographic key management are particularly susceptible. Our intelligence system identifies these vulnerabilities by analyzing fraud reports where physical card presence was falsely validated through compromised track data. Most susceptible BINs belong to smaller financial institutions with legacy authorization systems that don't implement dynamic CVV or transaction cryptograms. Without 3DS protection (cards marked "Exploitable"), fraudsters can more easily monetize the compromised track data, as the primary defense mechanism is missing. For cards with these BINs, financial institutions should implement real-time transaction monitoring looking for geographically impossible transaction sequences and encourage transition to contactless EMV transactions whenever possible.
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#malwareCollapse" aria-expanded="false" aria-controls="malwareCollapse">
-                                            <strong>Malware-Compromise</strong>
-                                        </button>
-                                    </h2>
-                                    <div id="malwareCollapse" class="accordion-collapse collapse" data-bs-parent="#exploitTypesAccordion">
-                                        <div class="accordion-body">
-                                            Malware-Compromise occurs when specialized software is deployed to harvest payment card data from compromised systems within the payment processing chain. This sophisticated attack vector targets payment processors, merchant backends, or e-commerce platforms rather than individual cards. Our system identifies BINs affected by malware compromises through statistical analysis showing abnormal fraud rates following specific breach events. Unlike skimming, which targets individual terminals, malware attacks compromise entire processing systems, potentially affecting thousands of cards simultaneously. These attacks often remain undetected for months as the malware operates silently, capturing and exfiltrating card data. BINs marked with this exploit type in our system show patterns consistent with large-scale data theft events rather than individual card targeting. Cards lacking 3DS protection (marked "Exploitable") are particularly vulnerable as they don't require additional authentication steps that might prevent fraudulent use even after data compromise. For financial institutions with affected BINs, our system recommends implementing AI-powered fraud detection specifically trained on post-breach transaction patterns. Merchants should be particularly vigilant with these BINs, implementing additional security measures such as tokenization and point-to-point encryption. Cardholders with these BINs should be enrolled in real-time transaction alerts to quickly identify unauthorized use following a malware compromise event.
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#rawDumpCollapse" aria-expanded="false" aria-controls="rawDumpCollapse">
-                                            <strong>Raw-Dump</strong>
-                                        </button>
-                                    </h2>
-                                    <div id="rawDumpCollapse" class="accordion-collapse collapse" data-bs-parent="#exploitTypesAccordion">
-                                        <div class="accordion-body">
-                                            Raw-Dump exploits involve the wholesale exposure of full card data through database breaches, often including complete cardholder information and authentication data. These devastating compromises frequently originate from insider threats or severe security failures at merchants, payment processors, or service providers who store card data. In our system, BINs flagged with this exploit type show evidence of appearing in underground marketplaces with full accompanying cardholder details (name, address, phone, email). The compromise severity is exceptional because the stolen data typically includes all elements needed to conduct both card-present and card-not-present fraud. Our intelligence system identifies these BINs by monitoring dark web card shops and data breach repositories, correlating offered card data with subsequent fraud attempts. Cards marked as "Exploitable" are particularly valuable in raw-dump scenarios because they lack the additional 3DS authentication barrier. Financial institutions with affected BINs should consider mass reissuance with new account numbers rather than attempting to monitor for fraud, as the comprehensive nature of the data exposure makes fraud prevention extremely difficult. For merchants, these BINs represent extraordinary risk, requiring enhanced verification measures including secondary authentication channels like SMS verification or callbacks for suspicious transactions. Our system recommends implementing strict velocity controls for these BINs, limiting both transaction frequency and value until new cards can be issued.
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cvvCollapse" aria-expanded="false" aria-controls="cvvCollapse">
-                                            <strong>CVV-Compromise</strong>
-                                        </button>
-                                    </h2>
-                                    <div id="cvvCollapse" class="accordion-collapse collapse" data-bs-parent="#exploitTypesAccordion">
-                                        <div class="accordion-body">
-                                            CVV-Compromise involves the theft of Card Verification Values, the 3-4 digit security codes printed on payment cards that are specifically designed to verify the physical possession of a card during card-not-present transactions. Unlike other data elements, CVV codes are not permitted to be stored after authorization according to PCI DSS requirements, making their compromise particularly concerning. In our system, BINs flagged with this exploit type show patterns of fraudulent transactions where correct CVV codes were provided despite the physical card remaining in the cardholder's possession. The compromise typically occurs through phishing attacks targeting cardholders, keyloggers on compromised devices, or malicious merchant sites that capture and exfiltrate CVV data during legitimate transactions. Our intelligence system identifies vulnerable BINs by analyzing the ratio of successful CVV authorizations in suspected fraudulent transactions compared to normal patterns. Cards without 3DS protection (marked "Exploitable") are particularly vulnerable since CVV is often their only defense against online fraud. For financial institutions with affected BINs, our system recommends implementing behavioral biometrics during online checkout processes to detect anomalous user patterns even when correct CVV codes are provided. Merchants should implement additional verification steps for these BINs, including device fingerprinting and transaction risk scoring. Issuers might also consider more frequent card reissuance cycles for BINs showing consistent patterns of CVV compromise.
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
                                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#crossBorderCollapse" aria-expanded="false" aria-controls="crossBorderCollapse">
                                             <strong>Cross-Border</strong>
                                         </button>
@@ -222,6 +157,19 @@
                                     <div id="crossBorderCollapse" class="accordion-collapse collapse" data-bs-parent="#exploitTypesAccordion">
                                         <div class="accordion-body">
                                             Cross-Border fraud involves the use of payment cards in countries different from their issuance location, a pattern strongly correlated with card theft and data compromise. This sophisticated exploit takes advantage of inconsistent fraud monitoring systems across international boundaries and the inherent delays in cross-border transaction verification. In our system, BINs flagged with this vulnerability show unusually high rates of usage in countries where the issuing bank has limited visibility or enforcement capability. The exploitation model typically involves the rapid monetization of stolen card data in regions with weaker fraud controls or higher acceptance of card-not-present transactions without strong authentication. Our intelligence system identifies these patterns by analyzing transaction country mismatches against cardholder country profiles, flagging anomalous international usage. Cards without 3DS protection (marked "Exploitable") are particularly vulnerable to cross-border fraud as they lack the dynamic authentication challenge that could identify unauthorized users regardless of location. For financial institutions with affected BINs, our system recommends implementing geofencing controls that require additional verification for transactions initiated outside the cardholder's home country. Merchants processing transactions from these BINs should implement country-specific risk rules, particularly for high-risk corridors identified in our fraud intelligence database. The financial impact of cross-border fraud is typically 30-40% higher than domestic fraud due to increased dispute complexity and lower recovery rates, making prevention particularly critical for these vulnerable BINs.
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#falsePositiveCVVCollapse" aria-expanded="false" aria-controls="falsePositiveCVVCollapse">
+                                            <strong>False-Positive CVV</strong> <span class="badge bg-secondary ms-2">Coming Soon</span>
+                                        </button>
+                                    </h2>
+                                    <div id="falsePositiveCVVCollapse" class="accordion-collapse collapse" data-bs-parent="#exploitTypesAccordion">
+                                        <div class="accordion-body">
+                                            False-Positive CVV vulnerability refers to a significant security flaw where payment card issuers fail to properly validate the CVV (Card Verification Value) during authorization, allowing transactions to proceed even when an incorrect CVV is provided. Unlike standard CVV compromise where the correct code is stolen, this vulnerability exists at the issuing bank's authorization systems level. Cards with this vulnerability accept any CVV input (such as '000' or random digits) despite having a different actual CVV printed on the card. This creates a critical security gap for e-commerce merchants who rely on CVV validation as a primary security measure. Our system identifies BINs with this vulnerability through transaction pattern analysis that detects unusually high authorization rates for transactions with deliberately incorrect CVV codes. The vulnerability often affects cards from smaller issuing banks or specific BIN ranges with outdated authorization systems. For merchants, these BINs represent a significant fraud risk as the CVV verification step becomes meaningless. Our system recommends implementing additional security layers including advanced fraud scoring, device fingerprinting, behavioral analytics, and potentially step-up authentication for transactions involving these BINs. E-commerce platforms should consider flagging these transactions for manual review or implementing higher-friction verification methods specifically for these card ranges.
                                         </div>
                                     </div>
                                 </div>
