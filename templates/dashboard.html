@@ -734,14 +734,115 @@
         let currentSortDirection = null;
         let currentBinsData = []; // Store current page data for client-side sorting
 
+        // Function to filter table by country
+        function filterTableByCountry(country) {
+            if (!country) return;
+            
+            // Display all rows
+            document.querySelectorAll('tr[data-country]').forEach(row => {
+                row.style.display = '';
+            });
+            
+            // Hide rows that don't match the country
+            document.querySelectorAll('tr[data-country]').forEach(row => {
+                if (row.dataset.country.toLowerCase() !== country.toLowerCase()) {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Show a message to the user
+            alert(`Showing BINs from ${country}`);
+        }
+        
+        // Function to show a specific brand tab
+        function showTabForBrand(brand) {
+            if (!brand) return;
+            
+            // Convert brand name to lowercase and clean it for the tab ID
+            const tabId = brand.toLowerCase().replace(/[^a-z0-9]/g, '');
+            
+            // Try to find the tab that matches this brand
+            let tabToShow = 'all-tab';
+            
+            if (tabId.includes('visa')) {
+                tabToShow = 'visa-tab';
+            } else if (tabId.includes('master')) {
+                tabToShow = 'mastercard-tab';
+            } else if (tabId.includes('amex') || tabId.includes('american')) {
+                tabToShow = 'amex-tab';
+            } else if (tabId.includes('discover')) {
+                tabToShow = 'discover-tab';
+            }
+            
+            // Activate the tab
+            const tab = document.getElementById(tabToShow);
+            if (tab) {
+                const bsTab = new bootstrap.Tab(tab);
+                bsTab.show();
+            }
+        }
+        
+        // Function to sort by multiple fields using natural sorting order
+        function sortTableRows(tableId, sortOrder) {
+            const tableBody = document.getElementById(tableId);
+            if (!tableBody) return;
+            
+            const rows = Array.from(tableBody.querySelectorAll('tr'));
+            
+            // Create a function to get values based on sort order
+            const getValue = (row, field) => {
+                // Get the value from data attribute
+                let value = row.dataset[field];
+                if (!value && field === 'bin') {
+                    // For BIN column, get the inner text of the first cell
+                    value = row.cells[0].innerText;
+                }
+                return (value || '').toLowerCase();
+            };
+            
+            // Sort the rows
+            rows.sort((rowA, rowB) => {
+                // Iterate through the sort order fields
+                for (const field of sortOrder) {
+                    const valueA = getValue(rowA, field);
+                    const valueB = getValue(rowB, field);
+                    
+                    if (valueA < valueB) return -1;
+                    if (valueA > valueB) return 1;
+                }
+                return 0;
+            });
+            
+            // Reinsert rows in the sorted order
+            rows.forEach(row => tableBody.appendChild(row));
+        }
+        
+        // Function to sort all brand tabs data
+        function sortBrandTabsData() {
+            // Define sort order: type, country, issuer, BIN
+            const sortOrder = ['type', 'country', 'issuer', 'bin'];
+            
+            // Sort main table
+            sortTableRows('bins-table-body', sortOrder);
+            
+            // Sort individual brand tables
+            sortTableRows('visa-bins-body', sortOrder);
+            sortTableRows('mastercard-bins-body', sortOrder);
+            sortTableRows('amex-bins-body', sortOrder);
+            sortTableRows('discover-bins-body', sortOrder);
+        }
+
         // Function to load BIN data with pagination
         function loadBINData(page = 1) {
             // Show loading spinner
             document.getElementById('table-spinner').style.display = 'flex';
             
-            // Clear table
-            const tableBody = document.getElementById('bins-table-body');
-            tableBody.innerHTML = '';
+            // Clear all tables
+            document.getElementById('bins-table-body').innerHTML = '';
+            document.getElementById('visa-bins-body').innerHTML = '';
+            document.getElementById('mastercard-bins-body').innerHTML = '';
+            document.getElementById('amex-bins-body').innerHTML = '';
+            document.getElementById('discover-bins-body').innerHTML = '';
             
             // Fetch paginated data
             fetch(`/api/bins?page=${page}&per_page=${perPage}`)
@@ -765,13 +866,24 @@
                     // Generate pagination controls
                     generatePagination(data.pagination);
                     
-                    // Populate table with data
-                    const tableBody = document.getElementById('bins-table-body');
+                    // Group data by brand for tab population
+                    const binsByBrand = {
+                        visa: [],
+                        mastercard: [],
+                        amex: [],
+                        discover: []
+                    };
                     
+                    // Process and organize all BINs
                     data.bins.forEach(bin => {
+                        // Create a base row that will be cloned for each tab
                         const row = document.createElement('tr');
                         row.dataset.patchStatus = bin.patch_status;
                         row.dataset.brand = (bin.brand || '').toLowerCase();
+                        row.dataset.type = (bin.type || '').toLowerCase();
+                        row.dataset.country = (bin.country || '').toLowerCase();
+                        row.dataset.issuer = (bin.issuer || '').toLowerCase();
+                        row.dataset.bin = bin.BIN;
                         
                         // Add class based on patch status
                         if (bin.patch_status === 'Exploitable') {
@@ -785,7 +897,8 @@
                             row.classList.add('table-warning');
                         }
                         
-                        row.innerHTML = `
+                        // Create row HTML for all tabs
+                        const rowHTML = `
                             <td>${bin.BIN}</td>
                             <td>${bin.exploit_type || 'Unknown'}</td>
                             <td>${bin.patch_status || 'Unknown'}</td>
@@ -803,19 +916,53 @@
                                 ${bin.is_verified ? `<small class="d-block text-muted mt-1">Source: ${bin.data_source}</small>` : ''}
                             </td>
                         `;
+                        
+                        // Set the row HTML
+                        row.innerHTML = rowHTML;
+                        
+                        // Add to the main "All Brands" tab
                         tableBody.appendChild(row);
+                        
+                        // Add to brand-specific tab if applicable
+                        const brandLower = (bin.brand || '').toLowerCase();
+                        
+                        // Clone the row for brand-specific tabs to avoid reference issues
+                        const cloneRow = (targetId) => {
+                            const clonedRow = row.cloneNode(true);
+                            document.getElementById(targetId).appendChild(clonedRow);
+                            
+                            // Re-attach event listener to the verify button in the cloned row
+                            const verifyBtn = clonedRow.querySelector('.verify-bin-btn');
+                            if (verifyBtn) {
+                                verifyBtn.addEventListener('click', handleVerifyClick);
+                            }
+                        };
+                        
+                        if (brandLower.includes('visa')) {
+                            cloneRow('visa-bins-body');
+                            binsByBrand.visa.push(bin);
+                        } else if (brandLower.includes('master')) {
+                            cloneRow('mastercard-bins-body');
+                            binsByBrand.mastercard.push(bin);
+                        } else if (brandLower.includes('american') || brandLower.includes('amex')) {
+                            cloneRow('amex-bins-body');
+                            binsByBrand.amex.push(bin);
+                        } else if (brandLower.includes('discover')) {
+                            cloneRow('discover-bins-body');
+                            binsByBrand.discover.push(bin);
+                        }
                     });
                     
                     // Apply filter for patched BINs
                     const showPatched = document.getElementById('show-patched-bins').checked;
                     if (!showPatched) {
-                        const patchedRows = document.querySelectorAll('tr[data-patch-status="Patched"]');
-                        patchedRows.forEach(row => {
+                        document.querySelectorAll('tr[data-patch-status="Patched"]').forEach(row => {
                             row.style.display = 'none';
                         });
                     }
                     
-                    // Filter out non-major brand cards (only show Visa, MasterCard, Amex, Discover)
+                    // Filter for major brands in all tabs - this is redundant now with our tab system,
+                    // but keeping it for compatibility with existing code 
                     const majorBrands = ['visa', 'mastercard', 'american express', 'amex', 'discover'];
                     document.querySelectorAll('tr[data-brand]').forEach(row => {
                         const brand = row.getAttribute('data-brand').toLowerCase();
@@ -824,6 +971,15 @@
                             row.style.display = 'none';
                         }
                     });
+                    
+                    // Add counts to tab labels
+                    document.querySelector('#visa-tab').textContent = `Visa (${binsByBrand.visa.length})`;
+                    document.querySelector('#mastercard-tab').textContent = `MasterCard (${binsByBrand.mastercard.length})`;
+                    document.querySelector('#amex-tab').textContent = `American Express (${binsByBrand.amex.length})`;
+                    document.querySelector('#discover-tab').textContent = `Discover (${binsByBrand.discover.length})`;
+                    
+                    // Sort the BINs initially by type, country, issuer, BIN
+                    sortBrandTabsData();
                 })
                 .catch(error => {
                     console.error('Error fetching BIN data:', error);
