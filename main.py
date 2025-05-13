@@ -6,7 +6,7 @@ import json
 from typing import List, Dict, Any, Tuple
 from collections import Counter
 from flask import Flask, render_template, jsonify, request
-from sqlalchemy import create_engine, func
+from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import sessionmaker, scoped_session, contains_eager
 
 from fraud_feed import FraudFeedScraper
@@ -766,25 +766,30 @@ def generate_more_bins():
     session = None
     
     try:
-        # Create a fresh session
+        # Create a fresh session with explicit cleanup
         session = Session()
         
-        # Count existing BINs in the database
-        existing_bins_count = session.query(func.count(BIN.id)).scalar() or 0
+        # Enable autocommit for count queries to prevent transaction buildup
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            result = conn.execute(text("SELECT COUNT(*) FROM bins"))
+            existing_bins_count = result.scalar() or 0
+            
         logger.info(f"Currently have {existing_bins_count} BINs in the database")
         
-        # Process up to 50 BINs at a time to avoid timeouts (client can call multiple times)
+        # Process up to 50 BINs at a time with connection handling optimized
         count = min(int(request.args.get('count', 10)), 50)
         
         # Get cross-border flag - default to True to generate cross-border BINs
         include_cross_border = request.args.get('cross_border', 'true').lower() == 'true'
         
-        logger.info(f"Generating {count} BINs (limited to prevent timeouts)")
+        logger.info(f"Generating {count} BINs with improved connection handling")
         if include_cross_border:
             logger.info("Including cross-border fraud detection")
         
-        # Get all existing BINs to avoid duplicates
-        existing_bins = set(bin_record.bin_code for bin_record in session.query(BIN.bin_code).all())
+        # Get all existing BINs to avoid duplicates - using AUTOCOMMIT to prevent transaction buildup
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            result = conn.execute(text("SELECT bin_code FROM bins"))
+            existing_bins = set(row[0] for row in result)
         
         # Known vulnerable BIN prefixes by issuer (based on historical exploits)
         # These prefixes are more likely to be exploitable and lack proper 3DS support
