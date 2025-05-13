@@ -14,6 +14,7 @@ class BIN(Base):
     issuer = Column(String(100))
     brand = Column(String(50))
     card_type = Column(String(20))  # 'credit', 'debit', etc.
+    card_level = Column(String(20), nullable=True)  # 'PLATINUM', 'GOLD', 'STANDARD', etc.
     prepaid = Column(Boolean, default=False)
     country = Column(String(2))  # ISO country code
     threeds1_supported = Column(Boolean, default=False)

@@ -279,6 +279,7 @@ def load_bin_data():
                 "issuer": bin_record.issuer,
                 "brand": bin_record.brand,
                 "type": bin_record.card_type,
+                "card_level": getattr(bin_record, 'card_level', None),  # Using getattr for backward compatibility
                 "country": bin_record.country,
                 "transaction_country": bin_record.transaction_country,
                 "threeDS1Supported": bin_record.threeds1_supported,
@@ -413,6 +414,7 @@ def get_bins_from_database(offset=0, limit=None, use_fresh_session=True):
                     "issuer": bin_record.issuer,
                     "brand": bin_record.brand,
                     "type": bin_record.card_type,
+                    "card_level": getattr(bin_record, 'card_level', None),  # Using getattr for backward compatibility
                     "prepaid": bin_record.prepaid,
                     "country": bin_record.country,
                     "threeDS1Supported": bin_record.threeds1_supported,

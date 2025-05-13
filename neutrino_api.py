@@ -160,6 +160,16 @@ class NeutrinoAPIClient:
         card_category = response.get("card-category", "").upper()
         card_brand = response.get("card-brand", "").upper()
         
+        # Extract card level from card category
+        card_level = None
+        card_level_keywords = ["PLATINUM", "GOLD", "SIGNATURE", "WORLD", "STANDARD", "CLASSIC", "BUSINESS", 
+                               "CORPORATE", "COMMERCIAL", "PREMIER", "INFINITE", "DIAMOND", "BLACK"]
+        
+        for keyword in card_level_keywords:
+            if keyword in card_category:
+                card_level = keyword
+                break
+        
         # Most premium cards (PLATINUM, GOLD, SIGNATURE) have 3DS
         premium_card = any(category in card_category for category in ["PLATINUM", "GOLD", "SIGNATURE", "WORLD"])
         # Business/corporate cards might not have 3DS
@@ -179,6 +189,7 @@ class NeutrinoAPIClient:
             "issuer": response.get("issuer"),
             "brand": response.get("card-brand"),
             "type": response.get("card-type", ""),  # DEBIT, CREDIT, CHARGE CARD
+            "card_level": card_level,  # PLATINUM, GOLD, etc.
             "prepaid": response.get("is-prepaid", False),  # Boolean in the API
             "country": response.get("country-code"),  # ISO 2-letter country code
             "threeDS1Supported": threeds1_supported,
@@ -188,7 +199,6 @@ class NeutrinoAPIClient:
             # Additional fields from Neutrino API
             "issuer_website": response.get("issuer-website"),
             "issuer_phone": response.get("issuer-phone")
-            # Note: We don't use card_category in our database schema
         }
         
     def verify_and_update_bin(self, existing_bin_data: Dict[str, Any]) -> Dict[str, Any]:
