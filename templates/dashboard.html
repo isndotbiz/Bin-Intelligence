@@ -325,7 +325,6 @@
                                         <th class="sortable" data-sort-field="brand">Brand <span class="sort-icon"></span></th>
                                         <th class="sortable" data-sort-field="type">Type <span class="sort-icon"></span></th>
                                         <th class="sortable" data-sort-field="country">Card Country <span class="sort-icon"></span></th>
-                                        <th class="sortable" data-sort-field="transaction_country">Trans. Country <span class="sort-icon"></span></th>
                                         <th class="sortable" data-sort-field="threeDS1Supported">3DS v1 <span class="sort-icon"></span></th>
                                         <th class="sortable" data-sort-field="threeDS2supported">3DS v2 <span class="sort-icon"></span></th>
                                         <th class="sortable" data-sort-field="is_verified">Verified <span class="sort-icon"></span></th>
@@ -619,10 +618,6 @@
                             <td>${bin.brand || 'Unknown'}</td>
                             <td>${bin.type || 'Unknown'}</td>
                             <td>${bin.country || 'Unknown'}</td>
-                            <td>${isCrossBorder ? 
-                                `<span class="badge bg-warning text-dark" title="Cross-border transaction detected">${bin.transaction_country || 'Unknown'}</span>` : 
-                                (bin.transaction_country || '-')}
-                            </td>
                             <td>${bin.threeDS1Supported ? '✓' : '✗'}</td>
                             <td>${bin.threeDS2supported ? '✓' : '✗'}</td>
                             <td>${bin.is_verified ? '<span class="badge bg-success">Verified</span>' : '<span class="badge bg-secondary">Not Verified</span>'}</td>
@@ -981,10 +976,6 @@
                                 <td>${binData.brand || 'Unknown'}</td>
                                 <td>${binData.type || 'Unknown'}</td>
                                 <td>${binData.country || 'Unknown'}</td>
-                                <td>${isCrossBorder ? 
-                                    `<span class="badge bg-warning text-dark" title="Cross-border transaction detected">${binData.transaction_country || 'Unknown'}</span>` : 
-                                    (binData.transaction_country || '-')}
-                                </td>
                                 <td>${binData.threeDS1Supported ? '✓' : '✗'}</td>
                                 <td>${binData.threeDS2supported ? '✓' : '✗'}</td>
                                 <td><span class="badge bg-success">Verified</span></td>
