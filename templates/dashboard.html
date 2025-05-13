@@ -777,8 +777,20 @@
             // Activate the tab
             const tab = document.getElementById(tabToShow);
             if (tab) {
-                const bsTab = new bootstrap.Tab(tab);
-                bsTab.show();
+                try {
+                    // Try bootstrap 5 method
+                    if (typeof bootstrap !== 'undefined') {
+                        const bsTab = new bootstrap.Tab(tab);
+                        bsTab.show();
+                    } else {
+                        // Fallback for bootstrap 4 or manual activation
+                        $(tab).tab('show');
+                    }
+                } catch (error) {
+                    console.error('Error activating tab:', error);
+                    // Manual activation as last resort
+                    tab.click();
+                }
             }
         }
         
@@ -1252,48 +1264,65 @@
             });
         });
 
+        // Function to handle verify button clicks
+        function handleVerifyClick(e) {
+            const button = e.target.closest('.verify-bin-btn');
+            if (!button) return;
+            
+            const bin = button.getAttribute('data-bin');
+            
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Verifying...';
+            
+            fetch(`/verify-bin/${bin}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Re-enable button
+                    button.disabled = false;
+                    button.innerHTML = '<i class="bi bi-shield-check"></i> Verify BIN';
+                    
+                    if (data.error) {
+                        alert(`Error verifying BIN: ${data.error}`);
+                    } else {
+                        // Replace the current row with updated data
+                        const row = button.closest('tr');
+                        
+                        // Extract BIN data from the data property of the response
+                        const binData = data.data || {};
+                        
+                        // Update row classes based on new data
+                        row.className = ''; // Clear existing classes
+                        
+                        if (binData.patch_status === 'Exploitable') {
+                            row.classList.add('table-danger');
+                        } else if (binData.patch_status === 'Patched') {
+                            row.classList.add('table-success');
+                        }
+                        
+                        // Highlight card-not-present exploit type
+                        if (binData.exploit_type === 'card-not-present') {
+                            row.classList.add('table-warning');
+                        }
+                        
+                        // Update all related tabs when a BIN is verified
+                        // Need to reload the data after verification
+                        loadBINData(currentPage);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error verifying BIN:', error);
+                    button.disabled = false;
+                    button.innerHTML = '<i class="bi bi-shield-check"></i> Verify BIN';
+                    alert(`Error verifying BIN: Network error`);
+                });
+        }
+        
         // Verify BIN button click handler
         document.addEventListener('click', function(e) {
             if (e.target.closest('.verify-bin-btn')) {
-                const button = e.target.closest('.verify-bin-btn');
-                const bin = button.getAttribute('data-bin');
-                
-                button.disabled = true;
-                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Verifying...';
-                
-                fetch(`/verify-bin/${bin}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        // Re-enable button
-                        button.disabled = false;
-                        button.innerHTML = '<i class="bi bi-shield-check"></i> Verify BIN';
-                        
-                        if (data.error) {
-                            alert(`Error verifying BIN: ${data.error}`);
-                        } else {
-                            // Replace the current row with updated data
-                            const row = button.closest('tr');
-                            
-                            // Extract BIN data from the data property of the response
-                            const binData = data.data || {};
-                            
-                            // Update row classes based on new data
-                            row.className = ''; // Clear existing classes
-                            
-                            if (binData.patch_status === 'Exploitable') {
-                                row.classList.add('table-danger');
-                            } else if (binData.patch_status === 'Patched') {
-                                row.classList.add('table-success');
-                            }
-                            
-                            // Highlight card-not-present exploit type
-                            if (binData.exploit_type === 'card-not-present') {
-                                row.classList.add('table-warning');
-                            }
-                            
-                            // Update row data attributes
-                            row.dataset.patchStatus = binData.patch_status;
-                            row.dataset.brand = (binData.brand || '').toLowerCase();
+                handleVerifyClick(e);
+            }
+        });
                             
                             // Update row HTML
                             row.innerHTML = `
