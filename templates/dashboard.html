@@ -948,52 +948,79 @@
                             // Replace the current row with updated data
                             const row = button.closest('tr');
                             
+                            // Extract BIN data from the data property of the response
+                            const binData = data.data || {};
+                            
                             // Check if this is a cross-border transaction
-                            const isCrossBorder = data.transaction_country && data.country && data.transaction_country !== data.country;
+                            const isCrossBorder = binData.transaction_country && binData.country && 
+                                                  binData.transaction_country !== binData.country;
                             
                             // Update row classes based on new data
                             row.className = ''; // Clear existing classes
                             
-                            if (data.patch_status === 'Exploitable') {
+                            if (binData.patch_status === 'Exploitable') {
                                 row.classList.add('table-danger');
-                            } else if (data.patch_status === 'Patched') {
+                            } else if (binData.patch_status === 'Patched') {
                                 row.classList.add('table-success');
                             }
                             
-                            if (data.exploit_type === 'cross-border') {
+                            if (binData.exploit_type === 'cross-border') {
                                 row.classList.add('table-warning');
                             }
                             
+                            // Extract BIN data from the data property of the response
+                            const binData = data.data || {};
+                            
                             // Update row data attributes
-                            row.dataset.patchStatus = data.patch_status;
-                            row.dataset.brand = (data.brand || '').toLowerCase();
+                            row.dataset.patchStatus = binData.patch_status;
+                            row.dataset.brand = (binData.brand || '').toLowerCase();
                             
                             // Update row HTML
                             row.innerHTML = `
-                                <td>${data.BIN}</td>
-                                <td>${data.exploit_type || 'Unknown'}</td>
-                                <td>${data.patch_status || 'Unknown'}</td>
-                                <td>${data.issuer || 'Unknown'}</td>
-                                <td>${data.brand || 'Unknown'}</td>
-                                <td>${data.type || 'Unknown'}</td>
-                                <td>${data.country || 'Unknown'}</td>
+                                <td>${binData.BIN}</td>
+                                <td>${binData.exploit_type || 'Unknown'}</td>
+                                <td>${binData.patch_status || 'Unknown'}</td>
+                                <td>${binData.issuer || 'Unknown'}</td>
+                                <td>${binData.brand || 'Unknown'}</td>
+                                <td>${binData.type || 'Unknown'}</td>
+                                <td>${binData.country || 'Unknown'}</td>
                                 <td>${isCrossBorder ? 
-                                    `<span class="badge bg-warning text-dark" title="Cross-border transaction detected">${data.transaction_country || 'Unknown'}</span>` : 
-                                    (data.transaction_country || '-')}
+                                    `<span class="badge bg-warning text-dark" title="Cross-border transaction detected">${binData.transaction_country || 'Unknown'}</span>` : 
+                                    (binData.transaction_country || '-')}
                                 </td>
-                                <td>${data.threeDS1Supported ? '✓' : '✗'}</td>
-                                <td>${data.threeDS2supported ? '✓' : '✗'}</td>
+                                <td>${binData.threeDS1Supported ? '✓' : '✗'}</td>
+                                <td>${binData.threeDS2supported ? '✓' : '✗'}</td>
                                 <td><span class="badge bg-success">Verified</span></td>
                                 <td>
-                                    <button class="btn btn-sm btn-primary verify-bin-btn" data-bin="${data.BIN}" title="Verify this BIN with Neutrino API to get real-world issuer, card type, and country information">
+                                    <button class="btn btn-sm btn-primary verify-bin-btn" data-bin="${binData.BIN}" title="Verify this BIN with Neutrino API to get real-world issuer, card type, and country information">
                                         <i class="bi bi-shield-check"></i> Verify BIN
                                     </button>
-                                    <small class="d-block text-muted mt-1">Source: ${data.data_source}</small>
+                                    <small class="d-block text-muted mt-1">Source: ${binData.data_source}</small>
                                 </td>
                             `;
                             
-                            // Show success message
-                            alert(`BIN ${bin} verified successfully: ${data.issuer} ${data.brand} ${data.type} card from ${data.country}`);
+                            // Show success message with better handling of unknown values
+                            // Construct a more informative message
+                            let successMessage = `BIN ${bin} verified successfully`;
+                            
+                            // Check if we have any meaningful information
+                            if (data.data && data.data.issuer && data.data.issuer !== 'Unknown') {
+                                successMessage += `: ${data.data.issuer}`;
+                                
+                                if (data.data.brand && data.data.brand !== 'Unknown') {
+                                    successMessage += ` ${data.data.brand}`;
+                                }
+                                
+                                if (data.data.type && data.data.type !== 'Unknown') {
+                                    successMessage += ` ${data.data.type}`;
+                                }
+                                
+                                if (data.data.country && data.data.country !== 'Unknown' && data.data.country !== 'XX') {
+                                    successMessage += ` card from ${data.data.country}`;
+                                }
+                            }
+                            
+                            alert(successMessage);
                             
                             // Filter again if needed (for patched/non-major brands)
                             const showPatched = document.getElementById('show-patched-bins').checked;
