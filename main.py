@@ -353,12 +353,12 @@ def get_bin_statistics(bins_data):
 @app.route('/')
 def index():
     """Dashboard home page"""
-    return render_template('fixed_dashboard.html')
-    
-@app.route('/simple')
-def simple_dashboard():
-    """Simple dashboard page without complex JS"""
     return render_template('simple_dashboard.html')
+    
+@app.route('/fixed')
+def fixed_dashboard():
+    """Fixed dashboard page with tabs and charts"""
+    return render_template('fixed_dashboard.html')
     
 @app.route('/old')
 def old_dashboard():
@@ -587,13 +587,24 @@ def api_bins():
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 200, type=int)  # Default to 200 BINs per page
         
-        # Calculate offset
-        offset = (page - 1) * per_page
+        # Check if we need to return all BINs (for client-side operations)
+        return_all = per_page >= 1000
+        
+        # Determine database limit and offset
+        if return_all:
+            # Return all BINs - no limit
+            limit = None
+            offset = 0
+        else:
+            # Calculate offset for normal pagination
+            offset = (page - 1) * per_page
+            limit = per_page
         
         # Get BINs from database with improved error handling and built-in pagination
         try:
-            # Use database-level pagination for better performance
-            bins_data, total_bins = get_bins_from_database(offset=offset, limit=per_page, use_fresh_session=True)
+            # Use database-level pagination (unless returning all)
+            bins_data, total_bins = get_bins_from_database(offset=offset, limit=limit, use_fresh_session=True)
+            logger.info(f"Loaded {len(bins_data)} BINs from database using optimized query")
         except Exception as db_error:
             logger.error(f"Database error when fetching BINs: {str(db_error)}")
             # Fallback to empty results with proper structure
@@ -601,18 +612,15 @@ def api_bins():
             total_bins = 0
             logger.warning("No BIN data available from database due to error")
         
-        # Calculate total pages
+        # Calculate total pages based on per_page parameter
         total_pages = max(1, (total_bins + per_page - 1) // per_page)  # At least 1 page
         
         # Ensure page is in valid range
         page = max(1, min(page, total_pages))
         
-        # No need for additional pagination since it's handled by the database query
-        paginated_bins = bins_data
-        
         # Prepare response with pagination metadata
         response = {
-            'bins': paginated_bins,
+            'bins': bins_data,
             'pagination': {
                 'total_bins': total_bins,
                 'total_pages': total_pages,

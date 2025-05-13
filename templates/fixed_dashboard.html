@@ -532,19 +532,25 @@
         let currentBinsData = [];
         
         // Function to load BIN data with pagination
-        function loadBINData(page = 1) {
+        function loadBINData(page = 1, loadAllTabs = true) {
             // Show loading spinner
             document.getElementById('table-spinner').style.display = 'flex';
             
             // Clear all tables
             document.getElementById('bins-table-body').innerHTML = '';
-            document.getElementById('visa-bins-body').innerHTML = '';
-            document.getElementById('mastercard-bins-body').innerHTML = '';
-            document.getElementById('amex-bins-body').innerHTML = '';
-            document.getElementById('discover-bins-body').innerHTML = '';
+            if (loadAllTabs) {
+                document.getElementById('visa-bins-body').innerHTML = '';
+                document.getElementById('mastercard-bins-body').innerHTML = '';
+                document.getElementById('amex-bins-body').innerHTML = '';
+                document.getElementById('discover-bins-body').innerHTML = '';
+            }
             
-            // Fetch paginated data
-            fetch(`/api/bins?page=${page}&per_page=${perPage}`)
+            // Fetch all BINs (not just the paginated ones) to populate brand tabs completely
+            const apiUrl = loadAllTabs 
+                ? '/api/bins?per_page=1000' // Load all BINs for complete tab data
+                : `/api/bins?page=${page}&per_page=${perPage}`; // Just load current page
+                
+            fetch(apiUrl)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`HTTP error! Status: ${response.status}`);
@@ -556,11 +562,11 @@
                     document.getElementById('table-spinner').style.display = 'none';
                     
                     // Store current page
-                    currentPage = data.pagination.current_page;
+                    currentPage = page;
                     
                     // Update pagination info
                     const startIdx = (currentPage - 1) * perPage + 1;
-                    const endIdx = Math.min(startIdx + data.bins.length - 1, data.pagination.total_bins);
+                    const endIdx = Math.min(startIdx + perPage - 1, data.pagination.total_bins);
                     document.getElementById('pagination-info').textContent = 
                         `Showing ${startIdx}-${endIdx} of ${data.pagination.total_bins} BINs`;
                     
@@ -568,7 +574,11 @@
                     currentBinsData = data.bins;
                     
                     // Generate pagination controls
-                    generatePagination(data.pagination);
+                    generatePagination({
+                        current_page: page,
+                        total_pages: Math.ceil(data.pagination.total_bins / perPage),
+                        total_bins: data.pagination.total_bins
+                    });
                     
                     // Group data by brand for tab population
                     const binsByBrand = {
@@ -578,9 +588,30 @@
                         discover: []
                     };
                     
-                    // Process and organize all BINs
-                    data.bins.forEach(bin => {
-                        // Create a base row that will be cloned for each tab
+                    // First pass - count all brand totals for all tabs
+                    if (loadAllTabs) {
+                        data.bins.forEach(bin => {
+                            const brand = (bin.brand || '').toLowerCase();
+                            if (brand.includes('visa')) {
+                                binsByBrand.visa.push(bin);
+                            } else if (brand.includes('mastercard')) {
+                                binsByBrand.mastercard.push(bin);
+                            } else if (brand.includes('american express') || brand.includes('amex')) {
+                                binsByBrand.amex.push(bin);
+                            } else if (brand.includes('discover')) {
+                                binsByBrand.discover.push(bin);
+                            }
+                        });
+                    }
+                    
+                    // Calculate the bins to display on the current page
+                    const startIndex = (page - 1) * perPage;
+                    const endIndex = Math.min(startIndex + perPage, data.bins.length);
+                    const currentPageBins = data.bins.slice(startIndex, endIndex);
+                    
+                    // Process and organize BINs for the current page in "All BINs" tab
+                    currentPageBins.forEach(bin => {
+                        // Create a base row for the All BINs tab
                         const row = document.createElement('tr');
                         row.dataset.patchStatus = bin.patch_status;
                         row.dataset.brand = (bin.brand || '').toLowerCase();
@@ -624,41 +655,95 @@
                         // Set the HTML content
                         row.innerHTML = rowHTML;
                         
-                        // Clone for the All BINs tab
-                        const allTabRow = row.cloneNode(true);
-                        document.getElementById('bins-table-body').appendChild(allTabRow);
-                        
-                        // Add to brand-specific arrays
-                        const brand = (bin.brand || '').toLowerCase();
-                        if (brand.includes('visa')) {
-                            binsByBrand.visa.push(bin);
-                            const visaRow = row.cloneNode(true);
-                            document.getElementById('visa-bins-body').appendChild(visaRow);
-                        } else if (brand.includes('mastercard')) {
-                            binsByBrand.mastercard.push(bin);
-                            const mcRow = row.cloneNode(true);
-                            document.getElementById('mastercard-bins-body').appendChild(mcRow);
-                        } else if (brand.includes('american express') || brand.includes('amex')) {
-                            binsByBrand.amex.push(bin);
-                            const amexRow = row.cloneNode(true);
-                            document.getElementById('amex-bins-body').appendChild(amexRow);
-                        } else if (brand.includes('discover')) {
-                            binsByBrand.discover.push(bin);
-                            const discoverRow = row.cloneNode(true);
-                            document.getElementById('discover-bins-body').appendChild(discoverRow);
-                        }
+                        // Add to the All BINs tab
+                        document.getElementById('bins-table-body').appendChild(row);
                     });
                     
-                    // Update the count badges
-                    document.getElementById('all-count').textContent = data.bins.length;
-                    document.getElementById('visa-count').textContent = binsByBrand.visa.length;
-                    document.getElementById('mastercard-count').textContent = binsByBrand.mastercard.length;
-                    document.getElementById('amex-count').textContent = binsByBrand.amex.length;
-                    document.getElementById('discover-count').textContent = binsByBrand.discover.length;
+                    // Only populate brand-specific tabs if requested
+                    if (loadAllTabs) {
+                        // Populate brand-specific tabs
+                        populateBrandTab('visa', binsByBrand.visa);
+                        populateBrandTab('mastercard', binsByBrand.mastercard);
+                        populateBrandTab('amex', binsByBrand.amex);
+                        populateBrandTab('discover', binsByBrand.discover);
+                        
+                        // Update the count badges
+                        document.getElementById('all-count').textContent = data.pagination.total_bins;
+                        document.getElementById('visa-count').textContent = binsByBrand.visa.length;
+                        document.getElementById('mastercard-count').textContent = binsByBrand.mastercard.length;
+                        document.getElementById('amex-count').textContent = binsByBrand.amex.length;
+                        document.getElementById('discover-count').textContent = binsByBrand.discover.length;
+                    }
                 })
                 .catch(error => {
                     console.error('Error loading BIN data:', error);
                     document.getElementById('table-spinner').style.display = 'none';
+                    document.getElementById('bins-table-body').innerHTML = `
+                        <tr>
+                            <td colspan="11" class="text-center">
+                                <div class="alert alert-danger">
+                                    Error loading BIN data: ${error.message}
+                                </div>
+                                <br><button class="btn btn-sm btn-primary mt-2" onclick="loadBINData()">Try Again</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+        }
+        
+        // Helper function to populate brand-specific tabs
+        function populateBrandTab(brand, bins) {
+            const tableBody = document.getElementById(`${brand}-bins-body`);
+            tableBody.innerHTML = '';
+            
+            if (bins.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="text-center">
+                            <div class="alert alert-info">No ${brand.toUpperCase()} BINs found</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            bins.forEach(bin => {
+                const row = document.createElement('tr');
+                
+                // Add class based on patch status
+                if (bin.patch_status === 'Exploitable') {
+                    row.classList.add('table-danger');
+                } else if (bin.patch_status === 'Patched') {
+                    row.classList.add('table-success');
+                }
+                
+                // Highlight card-not-present exploit type
+                if (bin.exploit_type === 'card-not-present') {
+                    row.classList.add('table-warning');
+                }
+                
+                // Create brand-specific row HTML (without the brand column)
+                row.innerHTML = `
+                    <td>${bin.BIN}</td>
+                    <td>${bin.exploit_type || 'Unknown'}</td>
+                    <td>${bin.patch_status || 'Unknown'}</td>
+                    <td>${bin.issuer || 'Unknown'}</td>
+                    <td>${bin.type || 'Unknown'}</td>
+                    <td>${bin.country || 'Unknown'}</td>
+                    <td>${bin.threeDS1Supported ? '✓' : '✗'}</td>
+                    <td>${bin.threeDS2supported ? '✓' : '✗'}</td>
+                    <td>${bin.is_verified ? '<span class="badge bg-success">Verified</span>' : '<span class="badge bg-secondary">Not Verified</span>'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary verify-bin-btn" data-bin="${bin.BIN}" title="Verify this BIN with Neutrino API to get real-world issuer, card type, and country information">
+                            <i class="bi bi-shield-check"></i> Verify BIN
+                        </button>
+                        <small class="d-block text-muted mt-1">Source: ${bin.data_source}</small>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        }
                     document.getElementById('bins-table-body').innerHTML = `
                         <tr>
                             <td colspan="11" class="text-center">

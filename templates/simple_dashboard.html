@@ -82,8 +82,8 @@
             document.getElementById('bin-data-container').style.display = 'none';
             document.getElementById('error-message').style.display = 'none';
             
-            // Fetch BIN data from API
-            fetch(`/api/bins?page=${page}&per_page=${perPage}`)
+            // Fetch all BINs from API - we need all of them to display properly
+            fetch(`/api/bins?per_page=1000`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`HTTP error! Status: ${response.status}`);
@@ -99,8 +99,20 @@
                     const tableBody = document.getElementById('bin-table-body');
                     tableBody.innerHTML = '';
                     
-                    // Populate table with BIN data
-                    data.bins.forEach(bin => {
+                    // Client-side pagination
+                    const allBins = data.bins;
+                    const totalBins = allBins.length;
+                    const totalPages = Math.ceil(totalBins / perPage);
+                    
+                    // Calculate start and end indices for the current page
+                    const startIdx = (currentPage - 1) * perPage;
+                    const endIdx = Math.min(startIdx + perPage, totalBins);
+                    
+                    // Get bins for current page
+                    const currentPageBins = allBins.slice(startIdx, endIdx);
+                    
+                    // Populate table with BIN data for current page
+                    currentPageBins.forEach(bin => {
                         const row = document.createElement('tr');
                         
                         // Set row classes based on patch status
@@ -128,13 +140,15 @@
                     });
                     
                     // Update pagination info
-                    const startIdx = (currentPage - 1) * perPage + 1;
-                    const endIdx = Math.min(startIdx + data.bins.length - 1, data.pagination.total_bins);
                     document.getElementById('pagination-info').textContent = 
-                        `Showing ${startIdx}-${endIdx} of ${data.pagination.total_bins} BINs`;
+                        `Showing ${startIdx + 1}-${endIdx} of ${totalBins} BINs`;
                     
-                    // Generate pagination controls
-                    generatePagination(data.pagination);
+                    // Generate pagination controls with our client-side pagination
+                    generatePagination({
+                        current_page: currentPage,
+                        total_pages: totalPages,
+                        total_bins: totalBins
+                    });
                 })
                 .catch(error => {
                     console.error('Error loading BIN data:', error);
@@ -157,6 +171,7 @@
             prevButton.textContent = 'Previous';
             prevButton.disabled = pagination.current_page <= 1;
             prevButton.addEventListener('click', () => {
+                // No need to reload data, just update current page and redisplay
                 loadBINData(pagination.current_page - 1);
             });
             paginationControls.appendChild(prevButton);
@@ -166,6 +181,27 @@
             const startPage = Math.max(1, pagination.current_page - Math.floor(maxPages / 2));
             const endPage = Math.min(pagination.total_pages, startPage + maxPages - 1);
             
+            // First page button if we're not starting from page 1
+            if (startPage > 1) {
+                const firstButton = document.createElement('button');
+                firstButton.className = 'btn btn-outline-primary';
+                firstButton.textContent = '1';
+                firstButton.addEventListener('click', () => {
+                    loadBINData(1);
+                });
+                paginationControls.appendChild(firstButton);
+                
+                // Add ellipsis if there's a gap
+                if (startPage > 2) {
+                    const ellipsis = document.createElement('button');
+                    ellipsis.className = 'btn btn-outline-primary disabled';
+                    ellipsis.textContent = '...';
+                    ellipsis.disabled = true;
+                    paginationControls.appendChild(ellipsis);
+                }
+            }
+            
+            // Middle page buttons
             for (let i = startPage; i <= endPage; i++) {
                 const pageButton = document.createElement('button');
                 pageButton.className = `btn ${i === pagination.current_page ? 'btn-primary' : 'btn-outline-primary'}`;
@@ -174,6 +210,26 @@
                     loadBINData(i);
                 });
                 paginationControls.appendChild(pageButton);
+            }
+            
+            // Last page button if we're not ending at the last page
+            if (endPage < pagination.total_pages) {
+                // Add ellipsis if there's a gap
+                if (endPage < pagination.total_pages - 1) {
+                    const ellipsis = document.createElement('button');
+                    ellipsis.className = 'btn btn-outline-primary disabled';
+                    ellipsis.textContent = '...';
+                    ellipsis.disabled = true;
+                    paginationControls.appendChild(ellipsis);
+                }
+                
+                const lastButton = document.createElement('button');
+                lastButton.className = 'btn btn-outline-primary';
+                lastButton.textContent = pagination.total_pages;
+                lastButton.addEventListener('click', () => {
+                    loadBINData(pagination.total_pages);
+                });
+                paginationControls.appendChild(lastButton);
             }
             
             // Next button
