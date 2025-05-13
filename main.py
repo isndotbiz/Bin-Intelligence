@@ -447,16 +447,27 @@ def get_bins_from_database(offset=0, limit=None, use_fresh_session=True):
             session.close()
 
 def get_database_statistics():
-    """Get statistics from the database"""
+    """Get statistics from the database with improved connection handling"""
+    # Create a fresh session for better connection handling
+    Session = sessionmaker(bind=engine)
+    session = None
+    
     try:
-        total_bins = db_session.query(func.count(BIN.id)).scalar() or 0
+        # Create a fresh session with explicit cleanup
+        session = Session()
         
-        # Get patch status counts
+        # Use SQL text query with AUTOCOMMIT for better reliability
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            result = conn.execute(text("SELECT COUNT(*) FROM bins"))
+            total_bins = result.scalar() or 0
+        
+        # Get patch status counts with AUTOCOMMIT for better reliability
         patch_status = {}
-        patch_results = db_session.query(BIN.patch_status, func.count(BIN.id)) \
-            .group_by(BIN.patch_status).all()
-        for status, count in patch_results:
-            patch_status[status or "unknown"] = count
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            patch_results = conn.execute(text("SELECT patch_status, COUNT(*) FROM bins GROUP BY patch_status"))
+            for row in patch_results:
+                status, count = row
+                patch_status[status or "unknown"] = count
         
         # Get brand counts - normalize names to avoid duplicates
         brand_mapping = {
@@ -467,9 +478,10 @@ def get_database_statistics():
             'DISCOVER': 'DISCOVER'
         }
         
-        # Get all brands from database
-        brand_results = db_session.query(BIN.brand, func.count(BIN.id)) \
-            .group_by(BIN.brand).all()
+        # Get all brands from database with AUTOCOMMIT for better reliability
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            brand_results = conn.execute(text("SELECT brand, COUNT(*) FROM bins GROUP BY brand"))
+            brand_results = [(row[0], row[1]) for row in brand_results]
             
         # Normalize and combine brands
         normalized_brands = {}
@@ -480,28 +492,47 @@ def get_database_statistics():
         # Sort by count and limit to top 10
         brands = dict(sorted(normalized_brands.items(), key=lambda x: x[1], reverse=True)[:10])
         
-        # Get country counts
+        # Get country counts with AUTOCOMMIT for better reliability
         countries = {}
-        country_results = db_session.query(BIN.country, func.count(BIN.id)) \
-            .group_by(BIN.country).order_by(func.count(BIN.id).desc()).limit(10).all()
-        for country, count in country_results:
-            countries[country or "unknown"] = count
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            country_results = conn.execute(text("""
+                SELECT country, COUNT(*) as cnt 
+                FROM bins 
+                GROUP BY country 
+                ORDER BY cnt DESC 
+                LIMIT 10
+            """))
+            for row in country_results:
+                country, count = row
+                countries[country or "unknown"] = count
         
-        # Get exploit type counts
+        # Get exploit type counts with AUTOCOMMIT for better reliability
         exploit_types = {}
-        exploit_results = db_session.query(ExploitType.name, func.count(BINExploit.id)) \
-            .join(BINExploit).group_by(ExploitType.name) \
-            .order_by(func.count(BINExploit.id).desc()).all()
-        for name, count in exploit_results:
-            exploit_types[name] = count
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            exploit_results = conn.execute(text("""
+                SELECT et.name, COUNT(be.id) as cnt
+                FROM exploit_types et
+                JOIN bin_exploits be ON et.id = be.exploit_type_id
+                GROUP BY et.name
+                ORDER BY cnt DESC
+            """))
+            for row in exploit_results:
+                name, count = row
+                exploit_types[name] = count
         
-        # Get 3DS support counts
-        threeds1_count = db_session.query(func.count(BIN.id)) \
-            .filter(BIN.threeds1_supported == True).scalar() or 0
-        threeds2_count = db_session.query(func.count(BIN.id)) \
-            .filter(BIN.threeds2_supported == True).scalar() or 0
-        no_3ds_count = db_session.query(func.count(BIN.id)) \
-            .filter(BIN.threeds1_supported == False, BIN.threeds2_supported == False).scalar() or 0
+        # Get 3DS support counts with AUTOCOMMIT for better reliability
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            # 3DS v1 only
+            result = conn.execute(text("SELECT COUNT(*) FROM bins WHERE threeds1_supported = true AND threeds2_supported = false"))
+            threeds1_count = result.scalar() or 0
+            
+            # 3DS v2
+            result = conn.execute(text("SELECT COUNT(*) FROM bins WHERE threeds2_supported = true"))
+            threeds2_count = result.scalar() or 0
+            
+            # No 3DS
+            result = conn.execute(text("SELECT COUNT(*) FROM bins WHERE threeds1_supported = false AND threeds2_supported = false"))
+            no_3ds_count = result.scalar() or 0
             
         # Get verification status counts
         verified_count = db_session.query(func.count(BIN.id)) \
