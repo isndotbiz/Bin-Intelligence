@@ -912,12 +912,23 @@
                         brandsLegend.appendChild(legendItem);
                     });
                     
-                    // Set up Countries chart (top 10 countries)
-                    const countries = Object.entries(stats.countries)
-                        .sort((a, b) => b[1] - a[1])
-                        .slice(0, 10);
-                    const countryLabels = countries.map(entry => entry[0]);
-                    const countryData = countries.map(entry => entry[1]);
+                    // Set up Countries chart (top 10 countries, excluding US from the chart but keeping in legend)
+                    const allCountries = Object.entries(stats.countries)
+                        .sort((a, b) => b[1] - a[1]);
+                    
+                    // Extract US data if present
+                    let usData = null;
+                    const nonUSCountries = allCountries.filter(entry => {
+                        if (entry[0] === 'US') {
+                            usData = entry;
+                            return false;
+                        }
+                        return true;
+                    }).slice(0, 9); // Take top 9 non-US countries
+                    
+                    // Create the country arrays for the chart
+                    const countryLabels = nonUSCountries.map(entry => entry[0]);
+                    const countryData = nonUSCountries.map(entry => entry[1]);
                     const countryColors = [
                         '#3498db', // Blue
                         '#2ecc71', // Green
@@ -928,7 +939,6 @@
                         '#d35400', // Dark Orange
                         '#2c3e50', // Dark Blue
                         '#27ae60', // Dark Green
-                        '#c0392b'  // Dark Red
                     ];
                     
                     // Only create new chart if it doesn't exist
@@ -988,6 +998,24 @@
                     // Create custom legend for countries
                     const countriesLegend = document.getElementById('countries-legend');
                     countriesLegend.innerHTML = '';
+                    
+                    // Add US data at the top of the legend if available
+                    if (usData) {
+                        const usLegendItem = document.createElement('div');
+                        usLegendItem.className = 'legend-item';
+                        usLegendItem.setAttribute('data-country', 'us');
+                        usLegendItem.innerHTML = `
+                            <div class="legend-color" style="background-color: #FF5733"></div>
+                            <span><strong>US: ${usData[1]}</strong> (excluded from chart for scale)</span>
+                        `;
+                        // Make legend items clickable to filter by country
+                        usLegendItem.addEventListener('click', function() {
+                            filterTableByCountry('us');
+                        });
+                        countriesLegend.appendChild(usLegendItem);
+                    }
+                    
+                    // Add other countries to the legend
                     countryLabels.forEach((label, index) => {
                         const legendItem = document.createElement('div');
                         legendItem.className = 'legend-item';
