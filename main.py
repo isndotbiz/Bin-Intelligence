@@ -534,9 +534,10 @@ def get_database_statistics():
             result = conn.execute(text("SELECT COUNT(*) FROM bins WHERE threeds1_supported = false AND threeds2_supported = false"))
             no_3ds_count = result.scalar() or 0
             
-        # Get verification status counts
-        verified_count = db_session.query(func.count(BIN.id)) \
-            .filter(BIN.is_verified == True).scalar() or 0
+        # Get verification status counts with AUTOCOMMIT for better reliability
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            result = conn.execute(text("SELECT COUNT(*) FROM bins WHERE is_verified = true"))
+            verified_count = result.scalar() or 0
         
         # Prepare statistics
         stats = {
@@ -560,9 +561,21 @@ def get_database_statistics():
         
     except Exception as e:
         logger.error(f"Error getting statistics from database: {str(e)}")
-        # Fallback to file-based stats if database query fails
-        bins_data = load_bin_data()
-        return get_bin_statistics(bins_data)
+        # Return empty statistics instead of recursively calling load_bin_data
+        return {
+            'total_bins': 0,
+            'verified_count': 0,
+            'patch_status': {'Patched': 0, 'Exploitable': 0},
+            '3ds_support': {'3DS_v1': 0, '3DS_v2': 0, 'No_3DS': 0},
+            'brands': {},
+            'countries': {},
+            'exploit_types': {},
+            'verification': {'verified': 0, 'unverified': 0}
+        }
+    finally:
+        # Clean up the session to prevent connection leaks
+        if session:
+            session.close()
 
 @app.route('/api/bins')
 def api_bins():
@@ -627,12 +640,21 @@ def api_bins():
 
 @app.route('/api/debug')
 def api_debug():
-    """Debug endpoint to check database connectivity"""
+    """Debug endpoint to check database connectivity with improved connection handling"""
+    # Create a fresh session for better connection handling
+    Session = sessionmaker(bind=engine)
+    session = None
+    
     try:
-        # Count BINs in database
-        bin_count = db_session.query(func.count(BIN.id)).scalar()
-        # Count exploit types
-        exploit_count = db_session.query(func.count(ExploitType.id)).scalar()
+        # Use AUTOCOMMIT for most reliable connection test
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            # Count BINs in database
+            result = conn.execute(text("SELECT COUNT(*) FROM bins"))
+            bin_count = result.scalar() or 0
+            
+            # Count exploit types
+            result = conn.execute(text("SELECT COUNT(*) FROM exploit_types"))
+            exploit_count = result.scalar() or 0
         
         return jsonify({
             'status': 'ok',
@@ -649,21 +671,49 @@ def api_debug():
             'error': str(e),
             'timestamp': datetime.utcnow().isoformat()
         }), 500
+    finally:
+        # Clean up the session to prevent connection leaks
+        if session:
+            session.close()
 
 @app.route('/api/stats')
 def api_stats():
-    """API endpoint to get statistics"""
+    """API endpoint to get statistics with improved error handling"""
     try:
-        # First try to get stats from database
+        # Get stats using the improved database connection handling
         stats = get_database_statistics()
+        
+        # If stats are empty, return empty structure but don't try to load from file
         if not stats or not stats.get('total_bins'):
-            # If no data in database, fallback to file
-            bins_data = load_bin_data()
-            stats = get_bin_statistics(bins_data)
+            logger.warning("No statistics available from database")
+            # Return empty but properly structured stats
+            stats = {
+                'total_bins': 0,
+                'verified_count': 0,
+                'patch_status': {'Patched': 0, 'Exploitable': 0},
+                '3ds_support': {'3DS_v1': 0, '3DS_v2': 0, 'No_3DS': 0},
+                'brands': {},
+                'countries': {},
+                'exploit_types': {},
+                'verification': {'verified': 0, 'unverified': 0}
+            }
+            
         return jsonify(stats)
     except Exception as e:
         logger.error(f"Error in api_stats: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        # Return properly structured empty stats for better client handling
+        empty_stats = {
+            'total_bins': 0,
+            'verified_count': 0,
+            'patch_status': {'Patched': 0, 'Exploitable': 0},
+            '3ds_support': {'3DS_v1': 0, '3DS_v2': 0, 'No_3DS': 0},
+            'brands': {},
+            'countries': {},
+            'exploit_types': {},
+            'verification': {'verified': 0, 'unverified': 0},
+            'error': str(e)
+        }
+        return jsonify(empty_stats), 500
 
 @app.route('/api/scan-history')
 def api_scan_history():
