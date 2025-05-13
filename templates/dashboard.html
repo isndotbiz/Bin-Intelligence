@@ -968,9 +968,6 @@
                                 row.classList.add('table-warning');
                             }
                             
-                            // Extract BIN data from the data property of the response
-                            const binData = data.data || {};
-                            
                             // Update row data attributes
                             row.dataset.patchStatus = binData.patch_status;
                             row.dataset.brand = (binData.brand || '').toLowerCase();
