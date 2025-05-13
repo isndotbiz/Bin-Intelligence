@@ -362,12 +362,21 @@ def index():
     """Dashboard home page"""
     return render_template('dashboard.html')
 
-def get_bins_from_database():
-    """Query BINs from the database using optimized join query"""
+def get_bins_from_database(offset=0, limit=None, use_fresh_session=True):
+    """Query BINs from the database using optimized join query with pagination support"""
+    session = None
+    
     try:
+        # Option to use a fresh session for better connection handling
+        if use_fresh_session:
+            Session = sessionmaker(bind=engine)
+            session = Session()
+            query_session = session
+        else:
+            query_session = db_session
+            
         # Use a single optimized query with LEFT JOIN to get all data at once
-        # This replaces multiple individual queries with one efficient query
-        results = db_session.query(
+        query = query_session.query(
             BIN,
             ExploitType.name.label('exploit_type_name')
         ).outerjoin(
@@ -377,7 +386,10 @@ def get_bins_from_database():
         ).options(
             # These options reduce the number of queries needed
             contains_eager(BIN.exploits).contains_eager(BINExploit.exploit_type)
-        ).all()
+        )
+        
+        # Execute the query to get all results
+        results = query.all()
         
         # Process results into a dictionary keyed by BIN code for deduplication
         bins_dict = {}
@@ -412,16 +424,27 @@ def get_bins_from_database():
                     "verified_at": verified_at_str
                 }
         
-        # Convert dictionary to list
-        bins_data = list(bins_dict.values())
+        # Convert dictionary to list and sort by BIN code
+        bins_data = sorted(list(bins_dict.values()), key=lambda x: x["BIN"])
+        
+        # Count total records for pagination
+        total_count = len(bins_data)
+        
+        # Apply pagination if specified
+        if limit is not None:
+            bins_data = bins_data[offset:offset + limit]
         
         logger.info(f"Loaded {len(bins_data)} BINs from database using optimized query")
-        return bins_data
+        return bins_data, total_count
         
     except Exception as e:
         logger.error(f"Error loading BINs from database: {str(e)}")
         # Avoid recursive loop, return empty list instead of calling load_bin_data
-        return []
+        return [], 0
+    finally:
+        # Clean up the fresh session if we created one
+        if session:
+            session.close()
 
 def get_database_statistics():
     """Get statistics from the database"""
@@ -518,36 +541,28 @@ def api_bins():
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 200, type=int)  # Default to 200 BINs per page
         
-        # Get BINs from database with proper error handling
+        # Calculate offset
+        offset = (page - 1) * per_page
+        
+        # Get BINs from database with improved error handling and built-in pagination
         try:
-            # First try direct query
-            bins_data = get_bins_from_database()
+            # Use database-level pagination for better performance
+            bins_data, total_bins = get_bins_from_database(offset=offset, limit=per_page, use_fresh_session=True)
         except Exception as db_error:
             logger.error(f"Database error when fetching BINs: {str(db_error)}")
-            # Fallback to load_bin_data which has its own error handling
-            bins_data = load_bin_data()
-        
-        # If we still have no data, return an empty list but with proper response structure
-        if not bins_data:
+            # Fallback to empty results with proper structure
             bins_data = []
-            logger.warning("No BIN data available from any source")
+            total_bins = 0
+            logger.warning("No BIN data available from database due to error")
         
         # Calculate total pages
-        total_bins = len(bins_data)
         total_pages = max(1, (total_bins + per_page - 1) // per_page)  # At least 1 page
         
         # Ensure page is in valid range
         page = max(1, min(page, total_pages))
-            
-        # Apply pagination safely
-        start_idx = (page - 1) * per_page
-        end_idx = min(start_idx + per_page, total_bins)  # Ensure we don't go past the end
         
-        # Handle empty results by providing empty list rather than slice error
-        if start_idx >= total_bins:
-            paginated_bins = []
-        else:
-            paginated_bins = bins_data[start_idx:end_idx]
+        # No need for additional pagination since it's handled by the database query
+        paginated_bins = bins_data
         
         # Prepare response with pagination metadata
         response = {
