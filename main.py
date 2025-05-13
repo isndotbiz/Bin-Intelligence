@@ -353,12 +353,17 @@ def get_bin_statistics(bins_data):
 @app.route('/')
 def index():
     """Dashboard home page"""
-    return render_template('dashboard.html')
+    return render_template('fixed_dashboard.html')
     
 @app.route('/simple')
 def simple_dashboard():
     """Simple dashboard page without complex JS"""
     return render_template('simple_dashboard.html')
+    
+@app.route('/old')
+def old_dashboard():
+    """Original dashboard page for reference"""
+    return render_template('dashboard.html')
 
 def get_bins_from_database(offset=0, limit=None, use_fresh_session=True):
     """Query BINs from the database using optimized join query with pagination support"""

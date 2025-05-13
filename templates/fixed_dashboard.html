@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Commerce BIN Intelligence Dashboard</title>
+    <!-- Bootstrap CSS with dark theme -->
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .dashboard-card {
+            transition: transform 0.3s ease;
+            margin-bottom: 1.5rem;
+        }
+        
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-card {
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+        
+        .stat-icon {
+            font-size: 2rem;
+            margin-right: 1rem;
+        }
+        
+        .data-point {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .tab-content {
+            padding-top: 1rem;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .exploits-legend {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 0 1rem 0.5rem 0;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 5px;
+            margin-right: 0.5rem;
+        }
+        
+        .table-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+        
+        .colored-tab .nav-link {
+            position: relative;
+            border-radius: 0.5rem 0.5rem 0 0;
+            padding: 0.75rem 1.5rem;
+            margin-right: 0.25rem;
+            transition: all 0.2s ease;
+        }
+        
+        .colored-tab .nav-link.active {
+            font-weight: bold;
+        }
+        
+        /* Badge count styling */
+        .badge-count {
+            margin-left: 5px;
+            font-size: 0.8em;
+            padding: 0.2em 0.6em;
+            border-radius: 50rem;
+        }
+        
+        /* Methodology section styling */
+        .methodology-section {
+            background-color: rgba(var(--bs-secondary-rgb), 0.1);
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .methodology-item {
+            margin-bottom: 1rem;
+        }
+        
+        .explanation-title {
+            border-left: 4px solid var(--bs-primary);
+            padding-left: 0.5rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-shield-lock-fill"></i> BIN Intelligence System
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#bin-data">BIN Data</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#methodology">Methodology</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle-fill"></i> This dashboard provides real-time intelligence on BINs with e-commerce vulnerabilities. Data is gathered from verified sources and enriched with Neutrino API.
+                </div>
+            </div>
+        </div>
+        
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card stat-card bg-primary text-white">
+                    <div class="card-body d-flex align-items-center">
+                        <i class="bi bi-credit-card stat-icon"></i>
+                        <div>
+                            <div class="data-point" id="total-bins">-</div>
+                            <div>Total BINs</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card bg-danger text-white">
+                    <div class="card-body d-flex align-items-center">
+                        <i class="bi bi-shield-exclamation stat-icon"></i>
+                        <div>
+                            <div class="data-point" id="exploitable-bins">-</div>
+                            <div>Exploitable BINs</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card bg-success text-white">
+                    <div class="card-body d-flex align-items-center">
+                        <i class="bi bi-shield-check stat-icon"></i>
+                        <div>
+                            <div class="data-point" id="patched-bins">-</div>
+                            <div>Patched BINs</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card bg-secondary text-white">
+                    <div class="card-body d-flex align-items-center">
+                        <i class="bi bi-shield-fill-check stat-icon"></i>
+                        <div>
+                            <div class="data-point" id="verified-bins">-</div>
+                            <div>Verified BINs</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Charts Row -->
+        <div class="row mb-4">
+            <!-- Exploits Chart -->
+            <div class="col-md-4">
+                <div class="card dashboard-card">
+                    <div class="card-header">
+                        <h5>Exploit Types</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="exploits-chart"></canvas>
+                        </div>
+                        <div class="exploits-legend" id="exploits-legend"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Card Brands Chart -->
+            <div class="col-md-4">
+                <div class="card dashboard-card">
+                    <div class="card-header">
+                        <h5>Card Brands</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="brands-chart"></canvas>
+                        </div>
+                        <div class="exploits-legend" id="brands-legend"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Countries Chart -->
+            <div class="col-md-4">
+                <div class="card dashboard-card">
+                    <div class="card-header">
+                        <h5>Top Card Countries</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="countries-chart"></canvas>
+                        </div>
+                        <div class="exploits-legend" id="countries-legend"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Methodology Section -->
+        <div class="row mb-4" id="methodology">
+            <div class="col-md-12">
+                <div class="card dashboard-card">
+                    <div class="card-header">
+                        <h5>BIN Classification Methodology</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="methodology-section">
+                            <div class="methodology-item">
+                                <h5 class="explanation-title">Card-Not-Present Fraud</h5>
+                                <p>BINs vulnerable to e-commerce fraud where physical cards aren't required. These transactions rely on card details only, making them susceptible to data theft and unauthorized use in online environments.</p>
+                            </div>
+                            
+                            <div class="methodology-item">
+                                <h5 class="explanation-title">False-Positive CVV</h5>
+                                <p>BINs where the Card Verification Value (CVV) validation is weak or bypassed. These cards accept any CVV value, allowing fraudsters to complete online purchases without knowing the real security code.</p>
+                            </div>
+                            
+                            <div class="methodology-item">
+                                <h5 class="explanation-title">No Auto-3DS</h5>
+                                <p>BINs lacking automatic 3D Secure authentication, which is an additional security layer for online transactions. Without this protection, cardholders aren't prompted for verification, increasing fraud vulnerability.</p>
+                            </div>
+                            
+                            <div class="methodology-item">
+                                <h5 class="explanation-title">Patch Status</h5>
+                                <p>Patched BINs have implemented necessary security features including 3DS support. Exploitable BINs lack critical security controls, making them vulnerable to e-commerce fraud methods.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tools Row -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card dashboard-card">
+                    <div class="card-header">
+                        <h5>Generate BINs</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Generate and verify additional BINs from major card networks using Neutrino API for merchant verification.</p>
+                        <div class="d-flex align-items-end">
+                            <div class="form-group me-3">
+                                <label for="bin-count" class="form-label">Number of BINs to generate:</label>
+                                <input type="number" class="form-control" id="bin-count" value="5" min="1" max="50">
+                            </div>
+                            <button id="generate-bins-btn" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i> Generate BINs
+                            </button>
+                        </div>
+                        <div class="mt-3" id="generation-result"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card dashboard-card">
+                    <div class="card-header">
+                        <h5>Refresh Data</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Refresh the BIN intelligence data by scanning for new exploited BINs from fraud feeds.</p>
+                        <button id="refresh-data-btn" class="btn btn-success">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh Data
+                        </button>
+                        <div class="mt-3" id="refresh-result"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- BIN Data Section -->
+        <div class="row" id="bin-data">
+            <div class="col-md-12">
+                <div class="card dashboard-card">
+                    <div class="card-header">
+                        <h5>BIN Data</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Tabs -->
+                        <ul class="nav nav-tabs colored-tab" id="binTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all-bins" type="button" role="tab">
+                                    All BINs <span class="badge bg-secondary badge-count" id="all-count">0</span>
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="visa-tab" data-bs-toggle="tab" data-bs-target="#visa-bins" type="button" role="tab">
+                                    Visa <span class="badge bg-secondary badge-count" id="visa-count">0</span>
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="mastercard-tab" data-bs-toggle="tab" data-bs-target="#mastercard-bins" type="button" role="tab">
+                                    MasterCard <span class="badge bg-secondary badge-count" id="mastercard-count">0</span>
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="amex-tab" data-bs-toggle="tab" data-bs-target="#amex-bins" type="button" role="tab">
+                                    Amex <span class="badge bg-secondary badge-count" id="amex-count">0</span>
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="discover-tab" data-bs-toggle="tab" data-bs-target="#discover-bins" type="button" role="tab">
+                                    Discover <span class="badge bg-secondary badge-count" id="discover-count">0</span>
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <!-- Filters and Controls -->
+                        <div class="row mt-3 mb-3">
+                            <div class="col-md-4 d-flex align-items-center">
+                                <div id="pagination-info">Loading...</div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="show-exploitable-only">
+                                    <label class="form-check-label" for="show-exploitable-only">Show exploitable BINs only</label>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="show-verified-only">
+                                    <label class="form-check-label" for="show-verified-only">Show verified BINs only</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4 d-flex justify-content-end">
+                                <div id="pagination-controls" class="btn-group" role="group"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Loading Spinner -->
+                        <div id="table-spinner" class="table-spinner">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Tab Content -->
+                        <div class="tab-content">
+                            <!-- All BINs Tab -->
+                            <div class="tab-pane fade show active" id="all-bins" role="tabpanel">
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>BIN</th>
+                                                <th>Exploit Type</th>
+                                                <th>Patch Status</th>
+                                                <th>Issuer</th>
+                                                <th>Brand</th>
+                                                <th>Type</th>
+                                                <th>Country</th>
+                                                <th>3DS1</th>
+                                                <th>3DS2</th>
+                                                <th>Verified</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="bins-table-body">
+                                            <!-- Data will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <!-- Visa BINs Tab -->
+                            <div class="tab-pane fade" id="visa-bins" role="tabpanel">
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>BIN</th>
+                                                <th>Exploit Type</th>
+                                                <th>Patch Status</th>
+                                                <th>Issuer</th>
+                                                <th>Type</th>
+                                                <th>Country</th>
+                                                <th>3DS1</th>
+                                                <th>3DS2</th>
+                                                <th>Verified</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="visa-bins-body">
+                                            <!-- Data will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <!-- MasterCard BINs Tab -->
+                            <div class="tab-pane fade" id="mastercard-bins" role="tabpanel">
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>BIN</th>
+                                                <th>Exploit Type</th>
+                                                <th>Patch Status</th>
+                                                <th>Issuer</th>
+                                                <th>Type</th>
+                                                <th>Country</th>
+                                                <th>3DS1</th>
+                                                <th>3DS2</th>
+                                                <th>Verified</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="mastercard-bins-body">
+                                            <!-- Data will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <!-- Amex BINs Tab -->
+                            <div class="tab-pane fade" id="amex-bins" role="tabpanel">
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>BIN</th>
+                                                <th>Exploit Type</th>
+                                                <th>Patch Status</th>
+                                                <th>Issuer</th>
+                                                <th>Type</th>
+                                                <th>Country</th>
+                                                <th>3DS1</th>
+                                                <th>3DS2</th>
+                                                <th>Verified</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="amex-bins-body">
+                                            <!-- Data will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <!-- Discover BINs Tab -->
+                            <div class="tab-pane fade" id="discover-bins" role="tabpanel">
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>BIN</th>
+                                                <th>Exploit Type</th>
+                                                <th>Patch Status</th>
+                                                <th>Issuer</th>
+                                                <th>Type</th>
+                                                <th>Country</th>
+                                                <th>3DS1</th>
+                                                <th>3DS2</th>
+                                                <th>Verified</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="discover-bins-body">
+                                            <!-- Data will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer class="mt-4 mb-4 text-center">
+            <p>&copy; 2025 BIN Intelligence System - For secure e-commerce protection only</p>
+        </footer>
+    </div>
+    
+    <!-- Bootstrap JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Initialize charts and data
+        let exploitsChart, brandsChart, countriesChart;
+        
+        // Pagination variables
+        let currentPage = 1;
+        const perPage = 50;
+        
+        // Sorting variables
+        let currentSortField = null;
+        let currentSortDirection = null;
+        let currentBinsData = [];
+        
+        // Function to load BIN data with pagination
+        function loadBINData(page = 1) {
+            // Show loading spinner
+            document.getElementById('table-spinner').style.display = 'flex';
+            
+            // Clear all tables
+            document.getElementById('bins-table-body').innerHTML = '';
+            document.getElementById('visa-bins-body').innerHTML = '';
+            document.getElementById('mastercard-bins-body').innerHTML = '';
+            document.getElementById('amex-bins-body').innerHTML = '';
+            document.getElementById('discover-bins-body').innerHTML = '';
+            
+            // Fetch paginated data
+            fetch(`/api/bins?page=${page}&per_page=${perPage}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Hide loading spinner
+                    document.getElementById('table-spinner').style.display = 'none';
+                    
+                    // Store current page
+                    currentPage = data.pagination.current_page;
+                    
+                    // Update pagination info
+                    const startIdx = (currentPage - 1) * perPage + 1;
+                    const endIdx = Math.min(startIdx + data.bins.length - 1, data.pagination.total_bins);
+                    document.getElementById('pagination-info').textContent = 
+                        `Showing ${startIdx}-${endIdx} of ${data.pagination.total_bins} BINs`;
+                    
+                    // Store current data for client-side sorting
+                    currentBinsData = data.bins;
+                    
+                    // Generate pagination controls
+                    generatePagination(data.pagination);
+                    
+                    // Group data by brand for tab population
+                    const binsByBrand = {
+                        visa: [],
+                        mastercard: [],
+                        amex: [],
+                        discover: []
+                    };
+                    
+                    // Process and organize all BINs
+                    data.bins.forEach(bin => {
+                        // Create a base row that will be cloned for each tab
+                        const row = document.createElement('tr');
+                        row.dataset.patchStatus = bin.patch_status;
+                        row.dataset.brand = (bin.brand || '').toLowerCase();
+                        row.dataset.type = (bin.type || '').toLowerCase();
+                        row.dataset.country = (bin.country || '').toLowerCase();
+                        row.dataset.issuer = (bin.issuer || '').toLowerCase();
+                        row.dataset.bin = bin.BIN;
+                        
+                        // Add class based on patch status
+                        if (bin.patch_status === 'Exploitable') {
+                            row.classList.add('table-danger');
+                        } else if (bin.patch_status === 'Patched') {
+                            row.classList.add('table-success');
+                        }
+                        
+                        // Highlight card-not-present exploit type
+                        if (bin.exploit_type === 'card-not-present') {
+                            row.classList.add('table-warning');
+                        }
+                        
+                        // Create row HTML for all tabs
+                        const rowHTML = `
+                            <td>${bin.BIN}</td>
+                            <td>${bin.exploit_type || 'Unknown'}</td>
+                            <td>${bin.patch_status || 'Unknown'}</td>
+                            <td>${bin.issuer || 'Unknown'}</td>
+                            <td>${bin.brand || 'Unknown'}</td>
+                            <td>${bin.type || 'Unknown'}</td>
+                            <td>${bin.country || 'Unknown'}</td>
+                            <td>${bin.threeDS1Supported ? '✓' : '✗'}</td>
+                            <td>${bin.threeDS2supported ? '✓' : '✗'}</td>
+                            <td>${bin.is_verified ? '<span class="badge bg-success">Verified</span>' : '<span class="badge bg-secondary">Not Verified</span>'}</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary verify-bin-btn" data-bin="${bin.BIN}" title="Verify this BIN with Neutrino API to get real-world issuer, card type, and country information">
+                                    <i class="bi bi-shield-check"></i> Verify BIN
+                                </button>
+                                <small class="d-block text-muted mt-1">Source: ${bin.data_source}</small>
+                            </td>
+                        `;
+                        
+                        // Set the HTML content
+                        row.innerHTML = rowHTML;
+                        
+                        // Clone for the All BINs tab
+                        const allTabRow = row.cloneNode(true);
+                        document.getElementById('bins-table-body').appendChild(allTabRow);
+                        
+                        // Add to brand-specific arrays
+                        const brand = (bin.brand || '').toLowerCase();
+                        if (brand.includes('visa')) {
+                            binsByBrand.visa.push(bin);
+                            const visaRow = row.cloneNode(true);
+                            document.getElementById('visa-bins-body').appendChild(visaRow);
+                        } else if (brand.includes('mastercard')) {
+                            binsByBrand.mastercard.push(bin);
+                            const mcRow = row.cloneNode(true);
+                            document.getElementById('mastercard-bins-body').appendChild(mcRow);
+                        } else if (brand.includes('american express') || brand.includes('amex')) {
+                            binsByBrand.amex.push(bin);
+                            const amexRow = row.cloneNode(true);
+                            document.getElementById('amex-bins-body').appendChild(amexRow);
+                        } else if (brand.includes('discover')) {
+                            binsByBrand.discover.push(bin);
+                            const discoverRow = row.cloneNode(true);
+                            document.getElementById('discover-bins-body').appendChild(discoverRow);
+                        }
+                    });
+                    
+                    // Update the count badges
+                    document.getElementById('all-count').textContent = data.bins.length;
+                    document.getElementById('visa-count').textContent = binsByBrand.visa.length;
+                    document.getElementById('mastercard-count').textContent = binsByBrand.mastercard.length;
+                    document.getElementById('amex-count').textContent = binsByBrand.amex.length;
+                    document.getElementById('discover-count').textContent = binsByBrand.discover.length;
+                })
+                .catch(error => {
+                    console.error('Error loading BIN data:', error);
+                    document.getElementById('table-spinner').style.display = 'none';
+                    document.getElementById('bins-table-body').innerHTML = `
+                        <tr>
+                            <td colspan="11" class="text-center">
+                                <div class="alert alert-danger">
+                                    Error loading BIN data: ${error.message}
+                                </div>
+                                <br><button class="btn btn-sm btn-primary mt-2" onclick="loadBINData()">Try Again</button>
+                            </td>
+                        </tr>
+                    `;
+                    document.getElementById('visa-bins-body').innerHTML = `
+                        <tr>
+                            <td colspan="10" class="text-center">
+                                <div class="alert alert-danger">
+                                    Error loading BIN data: ${error.message}
+                                </div>
+                                <br><button class="btn btn-sm btn-primary mt-2" onclick="loadBINData()">Try Again</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+        }
+        
+        // Function to generate pagination controls
+        function generatePagination(pagination) {
+            const paginationControls = document.getElementById('pagination-controls');
+            paginationControls.innerHTML = '';
+            
+            // Previous button
+            const prevButton = document.createElement('button');
+            prevButton.className = 'btn btn-outline-primary';
+            prevButton.innerHTML = '<i class="bi bi-chevron-left"></i>';
+            prevButton.disabled = pagination.current_page <= 1;
+            prevButton.addEventListener('click', function() {
+                if (pagination.current_page > 1) {
+                    loadBINData(pagination.current_page - 1);
+                }
+            });
+            paginationControls.appendChild(prevButton);
+            
+            // Page buttons
+            const startPage = Math.max(1, pagination.current_page - 2);
+            const endPage = Math.min(pagination.total_pages, startPage + 4);
+            
+            // First page button
+            if (startPage > 1) {
+                const firstButton = document.createElement('button');
+                firstButton.className = 'btn btn-outline-primary';
+                firstButton.textContent = '1';
+                firstButton.addEventListener('click', function() {
+                    loadBINData(1);
+                });
+                paginationControls.appendChild(firstButton);
+                
+                if (startPage > 2) {
+                    const ellipsis = document.createElement('button');
+                    ellipsis.className = 'btn btn-outline-primary disabled';
+                    ellipsis.textContent = '...';
+                    paginationControls.appendChild(ellipsis);
+                }
+            }
+            
+            // Page buttons
+            for (let i = startPage; i <= endPage; i++) {
+                const pageButton = document.createElement('button');
+                pageButton.className = i === pagination.current_page ? 'btn btn-primary' : 'btn btn-outline-primary';
+                pageButton.textContent = i;
+                pageButton.addEventListener('click', function() {
+                    loadBINData(i);
+                });
+                paginationControls.appendChild(pageButton);
+            }
+            
+            // Last page button
+            if (endPage < pagination.total_pages) {
+                if (endPage < pagination.total_pages - 1) {
+                    const ellipsis = document.createElement('button');
+                    ellipsis.className = 'btn btn-outline-primary disabled';
+                    ellipsis.textContent = '...';
+                    paginationControls.appendChild(ellipsis);
+                }
+                
+                const lastButton = document.createElement('button');
+                lastButton.className = 'btn btn-outline-primary';
+                lastButton.textContent = pagination.total_pages;
+                lastButton.addEventListener('click', function() {
+                    loadBINData(pagination.total_pages);
+                });
+                paginationControls.appendChild(lastButton);
+            }
+            
+            // Next button
+            const nextButton = document.createElement('button');
+            nextButton.className = 'btn btn-outline-primary';
+            nextButton.innerHTML = '<i class="bi bi-chevron-right"></i>';
+            nextButton.disabled = pagination.current_page >= pagination.total_pages;
+            nextButton.addEventListener('click', function() {
+                if (pagination.current_page < pagination.total_pages) {
+                    loadBINData(pagination.current_page + 1);
+                }
+            });
+            paginationControls.appendChild(nextButton);
+        }
+        
+        // Function to load dashboard statistics
+        function loadStatistics() {
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(stats => {
+                    // Update counter cards
+                    document.getElementById('total-bins').textContent = stats.total_bins;
+                    document.getElementById('exploitable-bins').textContent = stats.patch_status.Exploitable;
+                    document.getElementById('patched-bins').textContent = stats.patch_status.Patched;
+                    document.getElementById('verified-bins').textContent = stats.verification.verified;
+                    
+                    // Set up Exploit Types chart
+                    const exploitLabels = Object.keys(stats.exploit_types);
+                    const exploitData = Object.values(stats.exploit_types);
+                    const exploitColors = [
+                        '#ff6384', // Red
+                        '#36a2eb', // Blue
+                        '#ffce56', // Yellow
+                        '#4bc0c0', // Teal
+                        '#9966ff'  // Purple
+                    ];
+                    
+                    // Only create new chart if it doesn't exist
+                    if (!exploitsChart) {
+                        const exploitsCtx = document.getElementById('exploits-chart').getContext('2d');
+                        exploitsChart = new Chart(exploitsCtx, {
+                            type: 'pie',
+                            data: {
+                                labels: exploitLabels,
+                                datasets: [{
+                                    data: exploitData,
+                                    backgroundColor: exploitColors,
+                                    borderColor: '#ffffff',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        display: false
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                return `${context.label}: ${context.raw} BINs`;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        // Update existing chart
+                        exploitsChart.data.labels = exploitLabels;
+                        exploitsChart.data.datasets[0].data = exploitData;
+                        exploitsChart.update();
+                    }
+                    
+                    // Create custom legend for exploits
+                    const exploitsLegend = document.getElementById('exploits-legend');
+                    exploitsLegend.innerHTML = '';
+                    exploitLabels.forEach((label, index) => {
+                        const legendItem = document.createElement('div');
+                        legendItem.className = 'legend-item';
+                        legendItem.innerHTML = `
+                            <div class="legend-color" style="background-color: ${exploitColors[index]}"></div>
+                            <span>${label}: ${exploitData[index]}</span>
+                        `;
+                        exploitsLegend.appendChild(legendItem);
+                    });
+                    
+                    // Set up Card Brands chart
+                    const brandLabels = Object.keys(stats.brands);
+                    const brandData = Object.values(stats.brands);
+                    const brandColors = [
+                        '#4286f4', // Visa Blue
+                        '#eb001b', // Mastercard Red
+                        '#3c8a2e', // Amex Green
+                        '#ff6600', // Discover Orange
+                        '#3c3c3c'  // Other Grey
+                    ];
+                    
+                    // Only create new chart if it doesn't exist
+                    if (!brandsChart) {
+                        const brandsCtx = document.getElementById('brands-chart').getContext('2d');
+                        brandsChart = new Chart(brandsCtx, {
+                            type: 'pie',
+                            data: {
+                                labels: brandLabels,
+                                datasets: [{
+                                    data: brandData,
+                                    backgroundColor: brandColors,
+                                    borderColor: '#ffffff',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        display: false
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                return `${context.label}: ${context.raw} BINs`;
+                                            }
+                                        }
+                                    }
+                                },
+                                onClick: function(e, elements) {
+                                    if (elements.length > 0) {
+                                        const index = elements[0].index;
+                                        const brand = brandLabels[index].toLowerCase();
+                                        // Navigate to the appropriate tab
+                                        showTabForBrand(brand);
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        // Update existing chart
+                        brandsChart.data.labels = brandLabels;
+                        brandsChart.data.datasets[0].data = brandData;
+                        brandsChart.update();
+                    }
+                    
+                    // Create custom legend for brands
+                    const brandsLegend = document.getElementById('brands-legend');
+                    brandsLegend.innerHTML = '';
+                    brandLabels.forEach((label, index) => {
+                        const legendItem = document.createElement('div');
+                        legendItem.className = 'legend-item';
+                        legendItem.setAttribute('data-brand', label.toLowerCase());
+                        legendItem.innerHTML = `
+                            <div class="legend-color" style="background-color: ${brandColors[index]}"></div>
+                            <span>${label}: ${brandData[index]}</span>
+                        `;
+                        // Make legend items clickable to filter by brand
+                        legendItem.addEventListener('click', function() {
+                            const brand = this.getAttribute('data-brand');
+                            showTabForBrand(brand);
+                        });
+                        brandsLegend.appendChild(legendItem);
+                    });
+                    
+                    // Set up Countries chart (top 10 countries)
+                    const countries = Object.entries(stats.countries)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 10);
+                    const countryLabels = countries.map(entry => entry[0]);
+                    const countryData = countries.map(entry => entry[1]);
+                    const countryColors = [
+                        '#3498db', // Blue
+                        '#2ecc71', // Green
+                        '#e74c3c', // Red
+                        '#f39c12', // Orange
+                        '#9b59b6', // Purple
+                        '#1abc9c', // Turquoise
+                        '#d35400', // Dark Orange
+                        '#2c3e50', // Dark Blue
+                        '#27ae60', // Dark Green
+                        '#c0392b'  // Dark Red
+                    ];
+                    
+                    // Only create new chart if it doesn't exist
+                    if (!countriesChart) {
+                        const countriesCtx = document.getElementById('countries-chart').getContext('2d');
+                        countriesChart = new Chart(countriesCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: countryLabels,
+                                datasets: [{
+                                    label: 'BINs per Country',
+                                    data: countryData,
+                                    backgroundColor: countryColors,
+                                    borderColor: '#ffffff',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: {
+                                            precision: 0
+                                        }
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        display: false
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                return `${context.label}: ${context.raw} BINs`;
+                                            }
+                                        }
+                                    }
+                                },
+                                onClick: function(e, elements) {
+                                    if (elements.length > 0) {
+                                        const index = elements[0].index;
+                                        const country = countryLabels[index].toLowerCase();
+                                        filterTableByCountry(country);
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        // Update existing chart
+                        countriesChart.data.labels = countryLabels;
+                        countriesChart.data.datasets[0].data = countryData;
+                        countriesChart.update();
+                    }
+                    
+                    // Create custom legend for countries
+                    const countriesLegend = document.getElementById('countries-legend');
+                    countriesLegend.innerHTML = '';
+                    countryLabels.forEach((label, index) => {
+                        const legendItem = document.createElement('div');
+                        legendItem.className = 'legend-item';
+                        legendItem.setAttribute('data-country', label.toLowerCase());
+                        legendItem.innerHTML = `
+                            <div class="legend-color" style="background-color: ${countryColors[index]}"></div>
+                            <span>${label}: ${countryData[index]}</span>
+                        `;
+                        // Make legend items clickable to filter by country
+                        legendItem.addEventListener('click', function() {
+                            const country = this.getAttribute('data-country');
+                            filterTableByCountry(country);
+                        });
+                        countriesLegend.appendChild(legendItem);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching statistics:', error);
+                    alert('Error loading dashboard statistics. Please try refreshing the page.');
+                });
+        }
+
+        // Function to filter table by country
+        function filterTableByCountry(country) {
+            if (!country) return;
+            
+            // Display all rows
+            document.querySelectorAll('tr[data-country]').forEach(row => {
+                row.style.display = '';
+            });
+            
+            // Hide rows that don't match the country
+            document.querySelectorAll('tr[data-country]').forEach(row => {
+                if (row.dataset.country.toLowerCase() !== country.toLowerCase()) {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Show a message to the user
+            alert(`Showing BINs from ${country}`);
+        }
+        
+        // Function to show a specific brand tab
+        function showTabForBrand(brand) {
+            let tabToShow = 'all-tab';
+            
+            if (brand.includes('visa')) {
+                tabToShow = 'visa-tab';
+            } else if (brand.includes('mastercard')) {
+                tabToShow = 'mastercard-tab';
+            } else if (brand.includes('american express') || brand.includes('amex')) {
+                tabToShow = 'amex-tab';
+            } else if (brand.includes('discover')) {
+                tabToShow = 'discover-tab';
+            }
+            
+            // Activate the tab
+            const tab = document.getElementById(tabToShow);
+            if (tab) {
+                try {
+                    // Try bootstrap 5 method
+                    if (typeof bootstrap !== 'undefined') {
+                        const bsTab = new bootstrap.Tab(tab);
+                        bsTab.show();
+                    } else {
+                        // Fallback for bootstrap 4 or manual activation
+                        $(tab).tab('show');
+                    }
+                } catch (error) {
+                    console.error('Error activating tab:', error);
+                    // Manual activation as last resort
+                    tab.click();
+                }
+            }
+        }
+        
+        // Function to handle verify button clicks
+        function handleVerifyClick(e) {
+            const button = e.target.closest('.verify-bin-btn');
+            if (!button) return;
+            
+            const bin = button.getAttribute('data-bin');
+            
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Verifying...';
+            
+            fetch(`/verify-bin/${bin}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Re-enable button
+                    button.disabled = false;
+                    button.innerHTML = '<i class="bi bi-shield-check"></i> Verify BIN';
+                    
+                    if (data.error) {
+                        alert(`Error verifying BIN: ${data.error}`);
+                    } else {
+                        // Update all related tabs when a BIN is verified
+                        // Need to reload the data after verification
+                        loadBINData(currentPage);
+                        
+                        // Show success message
+                        alert(`BIN ${bin} verified successfully!`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error verifying BIN:', error);
+                    button.disabled = false;
+                    button.innerHTML = '<i class="bi bi-shield-check"></i> Verify BIN';
+                    alert(`Error verifying BIN: Network error`);
+                });
+        }
+        
+        // Document ready handler
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load BIN data
+            loadBINData();
+            
+            // Load statistics
+            loadStatistics();
+            
+            // Verify BIN button click handler
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.verify-bin-btn')) {
+                    handleVerifyClick(e);
+                }
+            });
+            
+            // Filter checkboxes
+            document.getElementById('show-exploitable-only').addEventListener('change', function() {
+                document.querySelectorAll('tr[data-patch-status]').forEach(row => {
+                    row.style.display = this.checked && row.dataset.patchStatus !== 'Exploitable' ? 'none' : '';
+                });
+            });
+            
+            document.getElementById('show-verified-only').addEventListener('change', function() {
+                document.querySelectorAll('tr td:nth-child(10)').forEach(cell => {
+                    const row = cell.closest('tr');
+                    row.style.display = this.checked && !cell.textContent.includes('Verified') ? 'none' : '';
+                });
+            });
+            
+            // Generate BINs button click handler
+            document.getElementById('generate-bins-btn').addEventListener('click', function() {
+                const binCount = document.getElementById('bin-count').value;
+                const generateResult = document.getElementById('generation-result');
+                
+                // Disable button during API call
+                this.disabled = true;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generating...';
+                
+                generateResult.innerHTML = '<div class="alert alert-info">Generating BINs... This may take a moment.</div>';
+                
+                fetch(`/generate-bins?count=${binCount}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Re-enable button
+                        this.disabled = false;
+                        this.innerHTML = '<i class="bi bi-plus-circle"></i> Generate BINs';
+                        
+                        if (data.status === 'error' || data.error) {
+                            generateResult.innerHTML = `<div class="alert alert-danger">${data.error || 'Unknown error occurred'}</div>`;
+                        } else {
+                            // Show success message
+                            generateResult.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+                            
+                            // Reload data
+                            loadBINData(1);
+                            loadStatistics();
+                        }
+                    })
+                    .catch(error => {
+                        // Re-enable button
+                        this.disabled = false;
+                        this.innerHTML = '<i class="bi bi-plus-circle"></i> Generate BINs';
+                        
+                        console.error('Error generating BINs:', error);
+                        generateResult.innerHTML = '<div class="alert alert-danger">Error generating BINs. Please try again.</div>';
+                    });
+            });
+
+            // Refresh Data button click handler
+            document.getElementById('refresh-data-btn').addEventListener('click', function() {
+                const refreshResult = document.getElementById('refresh-result');
+                
+                // Disable button during API call
+                this.disabled = true;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...';
+                
+                refreshResult.innerHTML = '<div class="alert alert-info">Refreshing BIN intelligence data... This may take a moment.</div>';
+                
+                fetch('/refresh')
+                    .then(response => response.json())
+                    .then(data => {
+                        // Re-enable button
+                        this.disabled = false;
+                        this.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh Data';
+                        
+                        if (data.status === 'error' || data.error) {
+                            refreshResult.innerHTML = `<div class="alert alert-danger">${data.error || 'Unknown error occurred'}</div>`;
+                        } else {
+                            // Show success message
+                            refreshResult.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+                            
+                            // Reload data
+                            loadBINData(1);
+                            loadStatistics();
+                        }
+                    })
+                    .catch(error => {
+                        // Re-enable button
+                        this.disabled = false;
+                        this.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh Data';
+                        
+                        console.error('Error refreshing data:', error);
+                        refreshResult.innerHTML = '<div class="alert alert-danger">Error refreshing data. Please try again.</div>';
+                    });
+            });
+        });
+    </script>
+</body>
+</html>
