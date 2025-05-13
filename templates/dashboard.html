@@ -602,11 +602,8 @@
                             row.classList.add('table-success');
                         }
                         
-                        // Check if this is a cross-border transaction
-                        const isCrossBorder = bin.transaction_country && bin.country && bin.transaction_country !== bin.country;
-                        
-                        // If exploit type is cross-border, highlight in a different color
-                        if (bin.exploit_type === 'cross-border') {
+                        // Highlight card-not-present exploit type
+                        if (bin.exploit_type === 'card-not-present') {
                             row.classList.add('table-warning');
                         }
                         
@@ -946,10 +943,6 @@
                             // Extract BIN data from the data property of the response
                             const binData = data.data || {};
                             
-                            // Check if this is a cross-border transaction
-                            const isCrossBorder = binData.transaction_country && binData.country && 
-                                                  binData.transaction_country !== binData.country;
-                            
                             // Update row classes based on new data
                             row.className = ''; // Clear existing classes
                             
@@ -959,7 +952,8 @@
                                 row.classList.add('table-success');
                             }
                             
-                            if (binData.exploit_type === 'cross-border') {
+                            // Highlight card-not-present exploit type
+                            if (binData.exploit_type === 'card-not-present') {
                                 row.classList.add('table-warning');
                             }
                             
