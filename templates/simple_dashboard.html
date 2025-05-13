@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIN Intelligence Dashboard</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>BIN Intelligence Dashboard</h1>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h3>BIN Data</h3>
+            </div>
+            <div class="card-body">
+                <div id="loading-spinner" class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p>Loading BIN data...</p>
+                </div>
+                
+                <div id="error-message" class="alert alert-danger" style="display: none;"></div>
+                
+                <div id="bin-data-container" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>BIN</th>
+                                    <th>Exploit Type</th>
+                                    <th>Patch Status</th>
+                                    <th>Issuer</th>
+                                    <th>Brand</th>
+                                    <th>Type</th>
+                                    <th>Country</th>
+                                    <th>3DS1</th>
+                                    <th>3DS2</th>
+                                    <th>Verified</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bin-table-body">
+                                <!-- BIN data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div id="pagination-container" class="mt-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div id="pagination-info"></div>
+                            <div class="btn-group" id="pagination-controls"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Show loading spinner
+            document.getElementById('loading-spinner').style.display = 'block';
+            document.getElementById('bin-data-container').style.display = 'none';
+            document.getElementById('error-message').style.display = 'none';
+            
+            // Load BIN data
+            loadBINData();
+        });
+        
+        // Pagination variables
+        let currentPage = 1;
+        const perPage = 50;
+        
+        function loadBINData(page = 1) {
+            // Update current page
+            currentPage = page;
+            
+            // Show loading spinner
+            document.getElementById('loading-spinner').style.display = 'block';
+            document.getElementById('bin-data-container').style.display = 'none';
+            document.getElementById('error-message').style.display = 'none';
+            
+            // Fetch BIN data from API
+            fetch(`/api/bins?page=${page}&per_page=${perPage}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Hide loading spinner
+                    document.getElementById('loading-spinner').style.display = 'none';
+                    document.getElementById('bin-data-container').style.display = 'block';
+                    
+                    // Clear existing rows
+                    const tableBody = document.getElementById('bin-table-body');
+                    tableBody.innerHTML = '';
+                    
+                    // Populate table with BIN data
+                    data.bins.forEach(bin => {
+                        const row = document.createElement('tr');
+                        
+                        // Set row classes based on patch status
+                        if (bin.patch_status === 'Exploitable') {
+                            row.classList.add('table-danger');
+                        } else if (bin.patch_status === 'Patched') {
+                            row.classList.add('table-success');
+                        }
+                        
+                        // Create row HTML
+                        row.innerHTML = `
+                            <td>${bin.BIN}</td>
+                            <td>${bin.exploit_type || 'Unknown'}</td>
+                            <td>${bin.patch_status || 'Unknown'}</td>
+                            <td>${bin.issuer || 'Unknown'}</td>
+                            <td>${bin.brand || 'Unknown'}</td>
+                            <td>${bin.type || 'Unknown'}</td>
+                            <td>${bin.country || 'Unknown'}</td>
+                            <td>${bin.threeDS1Supported ? '✓' : '✗'}</td>
+                            <td>${bin.threeDS2supported ? '✓' : '✗'}</td>
+                            <td>${bin.is_verified ? 'Yes' : 'No'}</td>
+                        `;
+                        
+                        tableBody.appendChild(row);
+                    });
+                    
+                    // Update pagination info
+                    const startIdx = (currentPage - 1) * perPage + 1;
+                    const endIdx = Math.min(startIdx + data.bins.length - 1, data.pagination.total_bins);
+                    document.getElementById('pagination-info').textContent = 
+                        `Showing ${startIdx}-${endIdx} of ${data.pagination.total_bins} BINs`;
+                    
+                    // Generate pagination controls
+                    generatePagination(data.pagination);
+                })
+                .catch(error => {
+                    console.error('Error loading BIN data:', error);
+                    
+                    // Hide loading spinner and show error message
+                    document.getElementById('loading-spinner').style.display = 'none';
+                    const errorMessage = document.getElementById('error-message');
+                    errorMessage.style.display = 'block';
+                    errorMessage.textContent = `Error loading BIN data: ${error.message}`;
+                });
+        }
+        
+        function generatePagination(pagination) {
+            const paginationControls = document.getElementById('pagination-controls');
+            paginationControls.innerHTML = '';
+            
+            // Previous button
+            const prevButton = document.createElement('button');
+            prevButton.className = 'btn btn-outline-primary';
+            prevButton.textContent = 'Previous';
+            prevButton.disabled = pagination.current_page <= 1;
+            prevButton.addEventListener('click', () => {
+                loadBINData(pagination.current_page - 1);
+            });
+            paginationControls.appendChild(prevButton);
+            
+            // Page buttons (show 5 pages or less)
+            const maxPages = 5;
+            const startPage = Math.max(1, pagination.current_page - Math.floor(maxPages / 2));
+            const endPage = Math.min(pagination.total_pages, startPage + maxPages - 1);
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const pageButton = document.createElement('button');
+                pageButton.className = `btn ${i === pagination.current_page ? 'btn-primary' : 'btn-outline-primary'}`;
+                pageButton.textContent = i;
+                pageButton.addEventListener('click', () => {
+                    loadBINData(i);
+                });
+                paginationControls.appendChild(pageButton);
+            }
+            
+            // Next button
+            const nextButton = document.createElement('button');
+            nextButton.className = 'btn btn-outline-primary';
+            nextButton.textContent = 'Next';
+            nextButton.disabled = pagination.current_page >= pagination.total_pages;
+            nextButton.addEventListener('click', () => {
+                loadBINData(pagination.current_page + 1);
+            });
+            paginationControls.appendChild(nextButton);
+        }
+    </script>
+</body>
+</html>
