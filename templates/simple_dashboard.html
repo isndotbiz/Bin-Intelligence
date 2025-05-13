@@ -35,6 +35,7 @@
                                     <th>Issuer</th>
                                     <th>Brand</th>
                                     <th>Type</th>
+                                    <th>Card Level</th>
                                     <th>Country</th>
                                     <th>3DS1</th>
                                     <th>3DS2</th>
@@ -130,6 +131,7 @@
                             <td>${bin.issuer || 'Unknown'}</td>
                             <td>${bin.brand || 'Unknown'}</td>
                             <td>${bin.type || 'Unknown'}</td>
+                            <td>${bin.card_level || 'Standard'}</td>
                             <td>${bin.country || 'Unknown'}</td>
                             <td>${bin.threeDS1Supported ? '✓' : '✗'}</td>
                             <td>${bin.threeDS2supported ? '✓' : '✗'}</td>
