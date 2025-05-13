@@ -51,16 +51,9 @@ else:
 def init_exploit_types():
     """Initialize the exploit types in the database if they don't exist"""
     exploit_types = {
-        "skimming": "Physical card data capture at ATMs or POS terminals",
-        "card-not-present": "Fraud in online or phone transactions where card is not physically present",
-        "gift-card-fraud": "Exploitation of gift cards or vouchers",
-        "unauthorized-chargebacks": "Fraudulent disputes of legitimate transactions",
-        "track-data-compromise": "Theft of magnetic stripe data",
-        "malware-compromise": "Using malware to steal card data",
-        "raw-dump": "Raw dump of card data without specific exploit type",
-        "identity-theft": "Complete identity information including card details",
-        "cvv-compromise": "Theft of card verification values",
-        "cross-border": "Cards used fraudulently across international borders"
+        "card-not-present": "Fraud in online transactions where physical card is not present during checkout",
+        "false-positive-cvv": "Cards with weak CVV verification that accept any CVV value during transaction",
+        "no-auto-3ds": "Cards lacking automatic 3D Secure authentication for online purchases"
     }
     
     # Check and add each exploit type if it doesn't exist
@@ -873,12 +866,7 @@ def generate_more_bins():
         # Process up to 50 BINs at a time with connection handling optimized
         count = min(int(request.args.get('count', 10)), 50)
         
-        # Get cross-border flag - default to True to generate cross-border BINs
-        include_cross_border = request.args.get('cross_border', 'true').lower() == 'true'
-        
         logger.info(f"Generating {count} BINs with improved connection handling")
-        if include_cross_border:
-            logger.info("Including cross-border fraud detection")
         
         # Get all existing BINs to avoid duplicates - using AUTOCOMMIT to prevent transaction buildup
         with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
@@ -955,37 +943,16 @@ def generate_more_bins():
         enriched_bins = enriched_bins[:count]
         logger.info(f"Successfully verified {len(enriched_bins)} BINs with Neutrino API")
         
-        # Add cross-border exploit classification to some of the BINs if requested
-        if include_cross_border:
-            # Get all exploit types
-            exploit_types = session.query(ExploitType).all()
-            exploit_type_map = {et.name: et for et in exploit_types}
-            
-            # Set cross-border exploit type to approximately 40% of BINs
-            for i, bin_data in enumerate(enriched_bins):
-                if random.random() < 0.4:
-                    # Simulate cross-border fraud by setting a transaction location
-                    # that differs from the card's issuing country
-                    card_country = bin_data.get("country", "US")
-                    
-                    # List of common transaction countries different from card's country
-                    transaction_countries = ["US", "CA", "GB", "FR", "DE", "IT", "ES", "JP", "SG", "AU"]
-                    # Remove the card's own country from the list
-                    if card_country in transaction_countries:
-                        transaction_countries.remove(card_country)
-                    
-                    # Select a random transaction country
-                    transaction_country = random.choice(transaction_countries)
-                    
-                    bin_data["transaction_country"] = transaction_country
-                    bin_data["exploit_type"] = "cross-border"
-                    
-                    logger.info(f"BIN {bin_data['BIN']} flagged as cross-border: " + 
-                                f"card from {card_country}, transaction in {transaction_country}")
-                else:
-                    # For other BINs, assign one of our e-commerce relevant exploit types
-                    e_commerce_exploit_types = ["card-not-present", "false-positive-cvv", "no-auto-3ds"]
-                    bin_data["exploit_type"] = random.choice(e_commerce_exploit_types)
+        # Assign real e-commerce exploit types to the BINs
+        # Get all exploit types
+        exploit_types = session.query(ExploitType).all()
+        exploit_type_map = {et.name: et for et in exploit_types}
+        
+        # Assign real e-commerce exploit types to all BINs
+        e_commerce_exploit_types = ["card-not-present", "false-positive-cvv", "no-auto-3ds"]
+        for bin_data in enriched_bins:
+            bin_data["exploit_type"] = random.choice(e_commerce_exploit_types)
+            logger.info(f"BIN {bin_data['BIN']} assigned e-commerce exploit type: {bin_data['exploit_type']}")
             
         # Save the verified BINs to the database with our improved function
         created, updated = save_bins_to_database(enriched_bins)
