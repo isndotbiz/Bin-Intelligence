@@ -6,7 +6,7 @@ import json
 from typing import List, Dict, Any, Tuple
 from collections import Counter
 from flask import Flask, render_template, jsonify, request
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.orm import sessionmaker, scoped_session, contains_eager
 
 from fraud_feed import FraudFeedScraper
