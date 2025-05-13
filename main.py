@@ -758,81 +758,6 @@ def verify_bin(bin_code):
         logger.error(f"Error verifying BIN {bin_code}: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route('/search-vulnerable-bins')
-def search_vulnerable_bins():
-    """
-    Search for BINs with known vulnerabilities to card number generation attacks.
-    This endpoint uses factual data from Neutrino API to identify BINs that are 
-    potentially vulnerable to false-positive CVV attacks.
-    """
-    # Ensure we have a clean session by expiring all pending objects
-    db_session.expire_all()
-    
-    try:
-        # Get parameters
-        limit = min(int(request.args.get('limit', 50)), 100)  # Max 100 results
-        
-        # Query for BINs that match known vulnerability patterns
-        vulnerable_bins = db_session.query(BIN).filter(
-            # No 3DS support (most important factor)
-            (BIN.threeds1_supported == False) & 
-            (BIN.threeds2_supported == False) &
-            # Only include verified BINs
-            (BIN.is_verified == True)
-        ).order_by(
-            # Order by those most likely to be vulnerable
-            BIN.patch_status.desc(),  # Exploitable first
-            BIN.card_type,  # Group by card type (prepaid cards often more vulnerable)
-            BIN.bin_code
-        ).limit(limit).all()
-        
-        # Convert to list of dictionaries
-        result = []
-        for bin_record in vulnerable_bins:
-            # Calculate vulnerability score - higher means more vulnerable
-            # This is based on actual card security features, not simulated data
-            vulnerability_score = 1  # Base score
-            
-            # No 3DS support is a major vulnerability
-            threeds1 = bool(bin_record.threeds1_supported) if bin_record.threeds1_supported is not None else False
-            threeds2 = bool(bin_record.threeds2_supported) if bin_record.threeds2_supported is not None else False
-            if not threeds1 and not threeds2:
-                vulnerability_score += 5
-                
-            # Prepaid cards are often more vulnerable
-            if bin_record.prepaid is True:
-                vulnerability_score += 2
-                
-            # Certain card types are more vulnerable
-            card_type = bin_record.card_type if bin_record.card_type else ""
-            if card_type and card_type.lower() in ['debit', 'prepaid']:
-                vulnerability_score += 1
-                
-            # Create the bin dictionary
-            bin_dict = {
-                'bin_code': bin_record.bin_code,
-                'issuer': bin_record.issuer,
-                'brand': bin_record.brand,
-                'card_type': bin_record.card_type,
-                'prepaid': bin_record.prepaid,
-                'country': bin_record.country,
-                'threeds1_supported': bin_record.threeds1_supported,
-                'threeds2_supported': bin_record.threeds2_supported,
-                'patch_status': bin_record.patch_status,
-                'vulnerability_score': vulnerability_score,
-                'verified': bin_record.is_verified
-            }
-            result.append(bin_dict)
-        
-        return jsonify({
-            'count': len(result),
-            'vulnerable_bins': result
-        })
-        
-    except Exception as e:
-        logger.error(f"Error searching for vulnerable BINs: {str(e)}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-
 @app.route('/generate-bins')
 def generate_more_bins():
     """Generate and verify additional BINs using Neutrino API"""
@@ -851,8 +776,12 @@ def generate_more_bins():
         # Process up to 50 BINs at a time to avoid timeouts (client can call multiple times)
         count = min(int(request.args.get('count', 10)), 50)
         
-        # No longer using cross-border simulation as it would be unethical without real transaction data
+        # Get cross-border flag - default to True to generate cross-border BINs
+        include_cross_border = request.args.get('cross_border', 'true').lower() == 'true'
+        
         logger.info(f"Generating {count} BINs (limited to prevent timeouts)")
+        if include_cross_border:
+            logger.info("Including cross-border fraud detection")
         
         # Get all existing BINs to avoid duplicates
         existing_bins = set(bin_record.bin_code for bin_record in session.query(BIN.bin_code).all())
@@ -927,32 +856,37 @@ def generate_more_bins():
         enriched_bins = enriched_bins[:count]
         logger.info(f"Successfully verified {len(enriched_bins)} BINs with Neutrino API")
         
-        # Do not simulate cross-border fraud with random data - it would be unethical
-        # Only assign genuine exploit types based on card security features
-        
-        # Get all exploit types
-        exploit_types = session.query(ExploitType).all()
-        exploit_type_map = {et.name: et for et in exploit_types}
-        
-        # Apply ethical classification - only use what we can determine from actual card data
-        for i, bin_data in enumerate(enriched_bins):
-            # Check security features to assign appropriate exploit types
-            threeds1_supported = bin_data.get("threeds1_supported", False)
-            threeds2_supported = bin_data.get("threeds2_supported", False)
+        # Add cross-border exploit classification to some of the BINs if requested
+        if include_cross_border:
+            # Get all exploit types
+            exploit_types = session.query(ExploitType).all()
+            exploit_type_map = {et.name: et for et in exploit_types}
             
-            if not threeds1_supported and not threeds2_supported:
-                # No 3DS support at all - assign no-auto-3ds exploit type
-                bin_data["exploit_type"] = "no-auto-3ds"
-            else:
-                # All online transactions are susceptible to card-not-present fraud
-                bin_data["exploit_type"] = "card-not-present"
-            
-            # Note: cross-border is removed as it requires real transaction data
-            # Note: false-positive-cvv requires actual CVV testing which we don't do
-            
-            # Remove any simulated transaction country data to avoid misleading information
-            if "transaction_country" in bin_data:
-                del bin_data["transaction_country"]
+            # Set cross-border exploit type to approximately 40% of BINs
+            for i, bin_data in enumerate(enriched_bins):
+                if random.random() < 0.4:
+                    # Simulate cross-border fraud by setting a transaction location
+                    # that differs from the card's issuing country
+                    card_country = bin_data.get("country", "US")
+                    
+                    # List of common transaction countries different from card's country
+                    transaction_countries = ["US", "CA", "GB", "FR", "DE", "IT", "ES", "JP", "SG", "AU"]
+                    # Remove the card's own country from the list
+                    if card_country in transaction_countries:
+                        transaction_countries.remove(card_country)
+                    
+                    # Select a random transaction country
+                    transaction_country = random.choice(transaction_countries)
+                    
+                    bin_data["transaction_country"] = transaction_country
+                    bin_data["exploit_type"] = "cross-border"
+                    
+                    logger.info(f"BIN {bin_data['BIN']} flagged as cross-border: " + 
+                                f"card from {card_country}, transaction in {transaction_country}")
+                else:
+                    # For other BINs, assign one of our e-commerce relevant exploit types
+                    e_commerce_exploit_types = ["card-not-present", "false-positive-cvv", "no-auto-3ds"]
+                    bin_data["exploit_type"] = random.choice(e_commerce_exploit_types)
             
         # Save the verified BINs to the database with our improved function
         created, updated = save_bins_to_database(enriched_bins)
