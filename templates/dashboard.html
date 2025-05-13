@@ -306,35 +306,157 @@
         <div class="row mb-4">
             <div class="col-md-12">
                 <div class="card dashboard-card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <div>BIN Database</div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="show-patched-bins" checked>
-                            <label class="form-check-label" for="show-patched-bins">Show Patched BINs</label>
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>BIN Database</div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="show-patched-bins" checked>
+                                <label class="form-check-label" for="show-patched-bins">Show Patched BINs</label>
+                            </div>
                         </div>
+                        
+                        <!-- Brand Tabs Navigation -->
+                        <ul class="nav nav-tabs" id="brandTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all-bins" type="button" role="tab" aria-controls="all-bins" aria-selected="true">All Brands</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="visa-tab" data-bs-toggle="tab" data-bs-target="#visa-bins" type="button" role="tab" aria-controls="visa-bins" aria-selected="false">Visa</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="mastercard-tab" data-bs-toggle="tab" data-bs-target="#mastercard-bins" type="button" role="tab" aria-controls="mastercard-bins" aria-selected="false">MasterCard</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="amex-tab" data-bs-toggle="tab" data-bs-target="#amex-bins" type="button" role="tab" aria-controls="amex-bins" aria-selected="false">American Express</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="discover-tab" data-bs-toggle="tab" data-bs-target="#discover-bins" type="button" role="tab" aria-controls="discover-bins" aria-selected="false">Discover</button>
+                            </li>
+                        </ul>
                     </div>
                     <div class="card-body">
-                        <div class="bin-table-container">
-                            <table class="table table-striped table-hover">
-                                <thead>
-                                    <tr>
-                                        <th class="sortable" data-sort-field="BIN">BIN <span class="sort-icon"></span></th>
-                                        <th class="sortable" data-sort-field="exploit_type">Exploit Type <span class="sort-icon"></span></th>
-                                        <th class="sortable" data-sort-field="patch_status">Patch Status <span class="sort-icon"></span></th>
-                                        <th class="sortable" data-sort-field="issuer">Issuer <span class="sort-icon"></span></th>
-                                        <th class="sortable" data-sort-field="brand">Brand <span class="sort-icon"></span></th>
-                                        <th class="sortable" data-sort-field="type">Type <span class="sort-icon"></span></th>
-                                        <th class="sortable" data-sort-field="country">Card Country <span class="sort-icon"></span></th>
-                                        <th class="sortable" data-sort-field="threeDS1Supported">3DS v1 <span class="sort-icon"></span></th>
-                                        <th class="sortable" data-sort-field="threeDS2supported">3DS v2 <span class="sort-icon"></span></th>
-                                        <th class="sortable" data-sort-field="is_verified">Verified <span class="sort-icon"></span></th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="bins-table-body">
-                                    <!-- Data will be loaded here -->
-                                </tbody>
-                            </table>
+                        <!-- Tab content for brands -->
+                        <div class="tab-content" id="brandTabsContent">
+                            <div class="tab-pane fade show active" id="all-bins" role="tabpanel" aria-labelledby="all-tab">
+                                <div class="bin-table-container">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th class="sortable" data-sort-field="BIN">BIN <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="exploit_type">Exploit Type <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="patch_status">Patch Status <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="issuer">Issuer <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="brand">Brand <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="type">Type <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="country">Card Country <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="threeDS1Supported">3DS v1 <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="threeDS2supported">3DS v2 <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="is_verified">Verified <span class="sort-icon"></span></th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="bins-table-body">
+                                            <!-- All BIN data will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <div class="tab-pane fade" id="visa-bins" role="tabpanel" aria-labelledby="visa-tab">
+                                <div class="bin-table-container">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th class="sortable" data-sort-field="BIN">BIN <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="exploit_type">Exploit Type <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="patch_status">Patch Status <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="issuer">Issuer <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="type">Type <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="country">Card Country <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="threeDS1Supported">3DS v1 <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="threeDS2supported">3DS v2 <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="is_verified">Verified <span class="sort-icon"></span></th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="visa-bins-body">
+                                            <!-- Visa BIN data will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <div class="tab-pane fade" id="mastercard-bins" role="tabpanel" aria-labelledby="mastercard-tab">
+                                <div class="bin-table-container">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th class="sortable" data-sort-field="BIN">BIN <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="exploit_type">Exploit Type <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="patch_status">Patch Status <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="issuer">Issuer <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="type">Type <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="country">Card Country <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="threeDS1Supported">3DS v1 <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="threeDS2supported">3DS v2 <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="is_verified">Verified <span class="sort-icon"></span></th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="mastercard-bins-body">
+                                            <!-- MasterCard BIN data will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <div class="tab-pane fade" id="amex-bins" role="tabpanel" aria-labelledby="amex-tab">
+                                <div class="bin-table-container">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th class="sortable" data-sort-field="BIN">BIN <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="exploit_type">Exploit Type <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="patch_status">Patch Status <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="issuer">Issuer <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="type">Type <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="country">Card Country <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="threeDS1Supported">3DS v1 <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="threeDS2supported">3DS v2 <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="is_verified">Verified <span class="sort-icon"></span></th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="amex-bins-body">
+                                            <!-- American Express BIN data will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <div class="tab-pane fade" id="discover-bins" role="tabpanel" aria-labelledby="discover-tab">
+                                <div class="bin-table-container">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th class="sortable" data-sort-field="BIN">BIN <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="exploit_type">Exploit Type <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="patch_status">Patch Status <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="issuer">Issuer <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="type">Type <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="country">Card Country <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="threeDS1Supported">3DS v1 <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="threeDS2supported">3DS v2 <span class="sort-icon"></span></th>
+                                                <th class="sortable" data-sort-field="is_verified">Verified <span class="sort-icon"></span></th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="discover-bins-body">
+                                            <!-- Discover BIN data will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                         <div class="loading-spinner" id="table-spinner">
                             <div class="spinner-border text-primary" role="status">
@@ -488,10 +610,20 @@
                     }
                 });
 
-                // Create Brands chart
+                // Create Brands chart with clickable elements
                 const brandsCtx = document.getElementById('brands-chart').getContext('2d');
                 const brandLabels = Object.keys(data.brands);
                 const brandValues = Object.values(data.brands);
+                const brandColors = chartColors.slice(0, brandLabels.length);
+                
+                // Create an array of brand data for clicking functionality
+                window.brandData = brandLabels.map((brand, index) => {
+                    return {
+                        brand: brand,
+                        count: brandValues[index],
+                        color: brandColors[index]
+                    };
+                });
                 
                 brandsChart = new Chart(brandsCtx, {
                     type: 'bar',
@@ -500,7 +632,7 @@
                         datasets: [{
                             label: 'BINs per Brand',
                             data: brandValues,
-                            backgroundColor: chartColors.slice(0, brandLabels.length),
+                            backgroundColor: brandColors,
                             borderWidth: 1
                         }]
                     },
@@ -511,14 +643,42 @@
                             y: {
                                 beginAtZero: true
                             }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.parsed.y} cards from ${context.label}`;
+                                    }
+                                }
+                            }
+                        },
+                        onClick: function(e) {
+                            const points = brandsChart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
+                            
+                            if (points.length) {
+                                const firstPoint = points[0];
+                                const brand = brandLabels[firstPoint.index];
+                                showTabForBrand(brand);
+                            }
                         }
                     }
                 });
 
-                // Create Countries chart
+                // Create Countries chart with clickable elements
                 const countriesCtx = document.getElementById('countries-chart').getContext('2d');
                 const countryLabels = Object.keys(data.countries);
                 const countryValues = Object.values(data.countries);
+                const countryColors = chartColors.slice(0, countryLabels.length);
+                
+                // Create an array of country data for clicking functionality
+                window.countryData = countryLabels.map((country, index) => {
+                    return {
+                        country: country,
+                        count: countryValues[index],
+                        color: countryColors[index]
+                    };
+                });
                 
                 countriesChart = new Chart(countriesCtx, {
                     type: 'bar',
@@ -527,7 +687,7 @@
                         datasets: [{
                             label: 'BINs per Country',
                             data: countryValues,
-                            backgroundColor: chartColors.slice(0, countryLabels.length),
+                            backgroundColor: countryColors,
                             borderWidth: 1
                         }]
                     },
@@ -537,6 +697,24 @@
                         scales: {
                             y: {
                                 beginAtZero: true
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.parsed.y} cards from ${context.label}`;
+                                    }
+                                }
+                            }
+                        },
+                        onClick: function(e) {
+                            const points = countriesChart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
+                            
+                            if (points.length) {
+                                const firstPoint = points[0];
+                                const country = countryLabels[firstPoint.index];
+                                filterTableByCountry(country);
                             }
                         }
                     }
