@@ -918,13 +918,13 @@
                         this.disabled = false;
                         this.innerHTML = '<i class="bi bi-shield-check"></i> Verify';
                         
-                        if (data.status === 'error' || data.error) {
+                        if (data.status === 'error' || data.error || data.message && data.status === 'error') {
                             document.getElementById('verification-result').innerHTML = 
-                                `<div class="alert alert-danger">${data.error || 'Unknown error occurred'}</div>`;
+                                `<div class="alert alert-danger">${data.error || data.message || 'Unknown error occurred'}</div>`;
                             return;
                         }
                         
-                        const binData = data.bin_data;
+                        const binData = data.data || data.bin_data;
                         
                         let resultHTML = '<div class="card">';
                         resultHTML += '<div class="card-header bg-success text-white">BIN Verification Result</div>';
@@ -977,8 +977,8 @@
                             button.disabled = false;
                             button.innerHTML = '<i class="bi bi-shield-check"></i> Verify BIN';
                             
-                            if (data.status === 'error' || data.error) {
-                                alert(`Error: ${data.error || 'Unknown error occurred'}`);
+                            if (data.status === 'error' || data.error || data.message && data.status === 'error') {
+                                alert(`Error: ${data.error || data.message || 'Unknown error occurred'}`);
                                 return;
                             }
                             
