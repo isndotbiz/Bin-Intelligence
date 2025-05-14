@@ -659,21 +659,18 @@
                         document.getElementById('bins-table-body').appendChild(row);
                     });
                     
-                    // Only populate brand-specific tabs if requested
-                    if (loadAllTabs) {
-                        // Populate brand-specific tabs
-                        populateBrandTab('visa', binsByBrand.visa);
-                        populateBrandTab('mastercard', binsByBrand.mastercard);
-                        populateBrandTab('amex', binsByBrand.amex);
-                        populateBrandTab('discover', binsByBrand.discover);
-                        
-                        // Update the count badges
-                        document.getElementById('all-count').textContent = data.pagination.total_bins;
-                        document.getElementById('visa-count').textContent = binsByBrand.visa.length;
-                        document.getElementById('mastercard-count').textContent = binsByBrand.mastercard.length;
-                        document.getElementById('amex-count').textContent = binsByBrand.amex.length;
-                        document.getElementById('discover-count').textContent = binsByBrand.discover.length;
-                    }
+                    // Always populate brand-specific tabs
+                    populateBrandTab('visa', binsByBrand.visa);
+                    populateBrandTab('mastercard', binsByBrand.mastercard);
+                    populateBrandTab('amex', binsByBrand.amex);
+                    populateBrandTab('discover', binsByBrand.discover);
+                    
+                    // Update the count badges
+                    document.getElementById('all-count').textContent = data.pagination.total_bins;
+                    document.getElementById('visa-count').textContent = binsByBrand.visa.length;
+                    document.getElementById('mastercard-count').textContent = binsByBrand.mastercard.length;
+                    document.getElementById('amex-count').textContent = binsByBrand.amex.length;
+                    document.getElementById('discover-count').textContent = binsByBrand.discover.length;
                 })
                 .catch(error => {
                     console.error('Error loading BIN data:', error);
