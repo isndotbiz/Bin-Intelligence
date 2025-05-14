@@ -273,19 +273,24 @@ def load_bin_data():
             except Exception:
                 exploit_type = None
                 
-            # Create a simplified record with only essential fields
+            # Create a more detailed record with all needed fields
             bin_data = {
                 "BIN": bin_record.bin_code,
                 "issuer": bin_record.issuer,
                 "brand": bin_record.brand,
                 "type": bin_record.card_type,
                 "card_level": getattr(bin_record, 'card_level', None),  # Using getattr for backward compatibility
+                "prepaid": getattr(bin_record, 'prepaid', False),
                 "country": bin_record.country,
                 "transaction_country": bin_record.transaction_country,
                 "threeDS1Supported": bin_record.threeds1_supported,
                 "threeDS2supported": bin_record.threeds2_supported,
                 "patch_status": bin_record.patch_status,
-                "exploit_type": exploit_type
+                "exploit_type": exploit_type,
+                "is_verified": getattr(bin_record, 'is_verified', False),
+                "data_source": getattr(bin_record, 'data_source', "Unknown"),
+                "issuer_website": getattr(bin_record, 'issuer_website', None),
+                "issuer_phone": getattr(bin_record, 'issuer_phone', None)
             }
             bins_data.append(bin_data)
             
@@ -379,17 +384,30 @@ def get_bins_from_database(offset=0, limit=None, use_fresh_session=True):
         else:
             query_session = db_session
             
-        # Use a single optimized query with LEFT JOIN to get all data at once
+        # Use a more direct approach to avoid the column error
         query = query_session.query(
-            BIN,
+            BIN.id,
+            BIN.bin_code,
+            BIN.issuer,
+            BIN.brand,
+            BIN.card_type,
+            BIN.card_level,
+            BIN.prepaid,
+            BIN.country,
+            BIN.transaction_country,
+            BIN.threeds1_supported,
+            BIN.threeds2_supported,
+            BIN.patch_status,
+            BIN.is_verified,
+            BIN.verified_at,
+            BIN.data_source,
+            BIN.issuer_website,
+            BIN.issuer_phone,
             ExploitType.name.label('exploit_type_name')
         ).outerjoin(
             BINExploit, BIN.id == BINExploit.bin_id
         ).outerjoin(
             ExploitType, BINExploit.exploit_type_id == ExploitType.id
-        ).options(
-            # These options reduce the number of queries needed
-            contains_eager(BIN.exploits).contains_eager(BINExploit.exploit_type)
         )
         
         # Execute the query to get all results
@@ -397,34 +415,54 @@ def get_bins_from_database(offset=0, limit=None, use_fresh_session=True):
         
         # Process results into a dictionary keyed by BIN code for deduplication
         bins_dict = {}
-        for bin_record, exploit_type_name in results:
+        for row in results:
+            # Extract fields from query result
+            bin_id = row[0]
+            bin_code = row[1]
+            issuer = row[2]
+            brand = row[3]
+            card_type = row[4]
+            card_level = row[5]
+            prepaid = row[6]
+            country = row[7]
+            transaction_country = row[8]
+            threeds1_supported = row[9]
+            threeds2_supported = row[10]
+            patch_status = row[11]
+            is_verified = row[12]
+            verified_at = row[13]
+            data_source = row[14]
+            issuer_website = row[15]
+            issuer_phone = row[16]
+            exploit_type_name = row[17]
+            
             # Only process each BIN once
-            if bin_record.bin_code not in bins_dict:
+            if bin_code not in bins_dict:
                 # Handle datetime conversion
                 verified_at_str = None
-                if bin_record.verified_at is not None:
+                if verified_at is not None:
                     try:
-                        verified_at_str = bin_record.verified_at.isoformat()
+                        verified_at_str = verified_at.isoformat()
                     except:
                         pass
                 
                 # Create the dictionary record
-                bins_dict[bin_record.bin_code] = {
-                    "BIN": bin_record.bin_code,
-                    "issuer": bin_record.issuer,
-                    "brand": bin_record.brand,
-                    "type": bin_record.card_type,
-                    "card_level": getattr(bin_record, 'card_level', None),  # Using getattr for backward compatibility
-                    "prepaid": bin_record.prepaid,
-                    "country": bin_record.country,
-                    "threeDS1Supported": bin_record.threeds1_supported,
-                    "threeDS2supported": bin_record.threeds2_supported,
-                    "patch_status": bin_record.patch_status,
-                    "exploit_type": exploit_type_name,  # From the joined query
-                    "is_verified": bin_record.is_verified,
-                    "data_source": bin_record.data_source,
-                    "issuer_website": bin_record.issuer_website,
-                    "issuer_phone": bin_record.issuer_phone,
+                bins_dict[bin_code] = {
+                    "BIN": bin_code,
+                    "issuer": issuer,
+                    "brand": brand,
+                    "type": card_type,
+                    "card_level": card_level,
+                    "prepaid": prepaid,
+                    "country": country,
+                    "threeDS1Supported": threeds1_supported,
+                    "threeDS2supported": threeds2_supported,
+                    "patch_status": patch_status,
+                    "exploit_type": exploit_type_name,
+                    "is_verified": is_verified,
+                    "data_source": data_source,
+                    "issuer_website": issuer_website,
+                    "issuer_phone": issuer_phone,
                     "verified_at": verified_at_str
                 }
         
