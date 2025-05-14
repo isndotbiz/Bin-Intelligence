@@ -104,6 +104,30 @@
             margin-right: 5px;
         }
         
+        /* Sorting styles */
+        .sortable {
+            cursor: pointer;
+            position: relative;
+            user-select: none;
+        }
+        
+        .sortable:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .sort-icon {
+            font-size: 0.8rem;
+            margin-left: 5px;
+        }
+        
+        .sortable[data-order="asc"] .sort-icon::before {
+            content: "\F272"; /* bi-sort-up */
+        }
+        
+        .sortable[data-order="desc"] .sort-icon::before {
+            content: "\F282"; /* bi-sort-down */
+        }
+        
         .methodology-section {
             display: flex;
             flex-wrap: wrap;
@@ -359,17 +383,17 @@
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th>BIN</th>
-                                        <th>Exploit Type</th>
-                                        <th>Patch Status</th>
-                                        <th>Issuer</th>
-                                        <th>Brand</th>
-                                        <th>Type</th>
-                                        <th>Card Level</th>
-                                        <th>Country</th>
-                                        <th>3DS1</th>
-                                        <th>3DS2</th>
-                                        <th>Verified</th>
+                                        <th class="sortable" data-sort="bin">BIN <i class="sort-icon bi"></i></th>
+                                        <th class="sortable" data-sort="exploit_type">Exploit Type <i class="sort-icon bi"></i></th>
+                                        <th class="sortable" data-sort="patch_status">Patch Status <i class="sort-icon bi"></i></th>
+                                        <th class="sortable" data-sort="issuer">Issuer <i class="sort-icon bi"></i></th>
+                                        <th class="sortable" data-sort="brand">Brand <i class="sort-icon bi"></i></th>
+                                        <th class="sortable" data-sort="type">Type <i class="sort-icon bi"></i></th>
+                                        <th class="sortable" data-sort="card_level">Card Level <i class="sort-icon bi"></i></th>
+                                        <th class="sortable" data-sort="country">Country <i class="sort-icon bi"></i></th>
+                                        <th class="sortable" data-sort="threeDS1Supported">3DS1 <i class="sort-icon bi"></i></th>
+                                        <th class="sortable" data-sort="threeDS2supported">3DS2 <i class="sort-icon bi"></i></th>
+                                        <th class="sortable" data-sort="is_verified">Verified <i class="sort-icon bi"></i></th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
