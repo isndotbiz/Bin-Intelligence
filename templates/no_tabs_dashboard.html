@@ -468,11 +468,6 @@
                         total_bins: totalBins
                     });
                     
-                    // Calculate the bins to display on the current page
-                    const startIndex = (page - 1) * perPage;
-                    const endIndex = Math.min(startIndex + perPage, data.bins.length);
-                    const currentPageBins = data.bins.slice(startIndex, endIndex);
-                    
                     // Sort bins data based on current sort field and direction
                     if (currentSortField) {
                         data.bins.sort((a, b) => {
@@ -506,7 +501,22 @@
                                     : valueB - valueA;
                             }
                         });
+                        
+                        // Update the sort indicator on table headers
+                        document.querySelectorAll('.sortable').forEach(header => {
+                            const sortField = header.getAttribute('data-sort');
+                            if (sortField === currentSortField) {
+                                header.setAttribute('data-order', currentSortDirection);
+                            } else {
+                                header.removeAttribute('data-order');
+                            }
+                        });
                     }
+                    
+                    // Calculate the bins to display on the current page after sorting
+                    const startIndex = (page - 1) * perPage;
+                    const endIndex = Math.min(startIndex + perPage, data.bins.length);
+                    const currentPageBins = data.bins.slice(startIndex, endIndex);
                     
                     // Process BINs for display
                     currentPageBins.forEach(bin => {
@@ -851,6 +861,30 @@
         
         // BIN verification event handler
         document.addEventListener('DOMContentLoaded', function() {
+            // Setup sortable table headers
+            document.querySelectorAll('.sortable').forEach(header => {
+                header.addEventListener('click', function() {
+                    const field = this.getAttribute('data-sort');
+                    
+                    // Toggle sort direction if clicking the same field
+                    if (field === currentSortField) {
+                        currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        currentSortField = field;
+                        currentSortDirection = 'asc';
+                    }
+                    
+                    // Update UI to show sort direction
+                    document.querySelectorAll('.sortable').forEach(h => {
+                        h.removeAttribute('data-order');
+                    });
+                    this.setAttribute('data-order', currentSortDirection);
+                    
+                    // Reload data with new sort settings
+                    loadBINData(currentPage);
+                });
+            });
+            
             // Verify BIN button in verification section
             document.getElementById('verify-bin-btn').addEventListener('click', function() {
                 const binInput = document.getElementById('bin-input');
