@@ -405,7 +405,7 @@
         
         // Pagination variables
         let currentPage = 1;
-        const perPage = 50;
+        const perPage = 200;
         
         // Sorting variables
         let currentSortField = null;
@@ -911,7 +911,7 @@
                 document.getElementById('verification-result').innerHTML = 
                     '<div class="alert alert-info">Verifying BIN... This may take a moment.</div>';
                 
-                fetch(`/verify-bin?bin=${bin}`)
+                fetch(`/verify-bin/${bin}`)
                     .then(response => response.json())
                     .then(data => {
                         // Re-enable button
@@ -970,7 +970,7 @@
                     button.disabled = true;
                     button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
                     
-                    fetch(`/verify-bin?bin=${bin}`)
+                    fetch(`/verify-bin/${bin}`)
                         .then(response => response.json())
                         .then(data => {
                             // Re-enable button
@@ -1096,21 +1096,90 @@
             const showExploitableOnly = document.getElementById('show-exploitable-only').checked;
             const showVerifiedOnly = document.getElementById('show-verified-only').checked;
             
-            const rows = document.querySelectorAll('#bins-table-body tr');
-            
-            rows.forEach(row => {
-                let show = true;
+            // If we're showing exploitable BINs, we need to reload the entire table
+            if (showExploitableOnly) {
+                // Clear the table first
+                document.getElementById('bins-table-body').innerHTML = '';
                 
-                if (showExploitableOnly && row.dataset.patchStatus !== 'Exploitable') {
-                    show = false;
-                }
+                // Filter the data to only exploitable BINs
+                const exploitableBins = currentBinsData.filter(bin => bin.patch_status === 'Exploitable');
                 
-                if (showVerifiedOnly && !row.innerHTML.includes('badge bg-success">Verified')) {
-                    show = false;
-                }
+                // Add all the exploitable BINs to the table, regardless of pagination
+                exploitableBins.forEach(bin => {
+                    // Create a base row
+                    const row = document.createElement('tr');
+                    row.dataset.patchStatus = bin.patch_status;
+                    row.dataset.brand = (bin.brand || '').toLowerCase();
+                    row.dataset.type = (bin.type || '').toLowerCase();
+                    row.dataset.country = (bin.country || '').toLowerCase();
+                    row.dataset.issuer = (bin.issuer || '').toLowerCase();
+                    row.dataset.bin = bin.BIN;
+                    
+                    // Add class based on patch status
+                    if (bin.patch_status === 'Exploitable') {
+                        row.classList.add('table-danger');
+                    } else if (bin.patch_status === 'Patched') {
+                        row.classList.add('table-success');
+                    }
+                    
+                    // Highlight card-not-present exploit type
+                    if (bin.exploit_type === 'card-not-present') {
+                        row.classList.add('table-warning');
+                    }
+                    
+                    // Create row HTML
+                    row.innerHTML = `
+                        <td>${bin.BIN}</td>
+                        <td>${bin.exploit_type || 'Unknown'}</td>
+                        <td>${bin.patch_status || 'Unknown'}</td>
+                        <td>${bin.issuer || 'Unknown'}</td>
+                        <td>${bin.brand || 'Unknown'}</td>
+                        <td>${bin.type || 'Unknown'}</td>
+                        <td>${bin.card_level || 'Standard'}</td>
+                        <td>${bin.country || 'Unknown'}</td>
+                        <td>${bin.threeDS1Supported ? '✓' : '✗'}</td>
+                        <td>${bin.threeDS2supported ? '✓' : '✗'}</td>
+                        <td>${bin.is_verified ? '<span class="badge bg-success">Verified</span>' : '<span class="badge bg-secondary">Not Verified</span>'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary verify-bin-btn" data-bin="${bin.BIN}" title="Verify this BIN with Neutrino API to get real-world issuer, card type, and country information">
+                                <i class="bi bi-shield-check"></i> Verify BIN
+                            </button>
+                            <small class="d-block text-muted mt-1">Source: ${bin.data_source}</small>
+                        </td>
+                    `;
+                    
+                    // Check if we should also filter by verified status
+                    if (!showVerifiedOnly || bin.is_verified) {
+                        // Add to the table
+                        document.getElementById('bins-table-body').appendChild(row);
+                    }
+                });
                 
-                row.style.display = show ? '' : 'none';
-            });
+                // Update pagination info for the exploitable bins
+                const totalExploitable = exploitableBins.length;
+                document.getElementById('pagination-info').textContent = 
+                    `Showing all ${totalExploitable} exploitable BINs`;
+                
+                // Hide pagination controls when showing all exploitable BINs
+                document.getElementById('pagination-controls').style.display = 'none';
+            } else if (showVerifiedOnly) {
+                // If we're only showing verified BINs but not exploitable, we can filter the existing rows
+                const rows = document.querySelectorAll('#bins-table-body tr');
+                
+                rows.forEach(row => {
+                    const isVerified = row.innerHTML.includes('badge bg-success">Verified');
+                    row.style.display = isVerified ? '' : 'none';
+                });
+                
+                // Show pagination controls again
+                document.getElementById('pagination-controls').style.display = 'block';
+            } else {
+                // If neither filter is active, reload the current page of BINs
+                loadBINData(currentPage);
+                
+                // Show pagination controls again
+                document.getElementById('pagination-controls').style.display = 'block';
+            }
         }
     </script>
 </body>
