@@ -235,20 +235,6 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- BIN Countries -->
-            <div class="col-lg-6">
-                <div class="card h-100">
-                    <div class="card-header">
-                        <h5>Countries</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="chart-container">
-                            <canvas id="countries-chart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
         
         <!-- Classification Methodology Row -->
@@ -401,7 +387,7 @@
     
     <script>
         // Initialize charts and data
-        let exploitsChart, brandsChart, countriesChart, threedsChart;
+        let exploitsChart, brandsChart, threedsChart;
         
         // Pagination variables
         let currentPage = 1;
@@ -620,9 +606,6 @@
                     
                     // Create Brands chart
                     createBrandsChart(stats.brands);
-                    
-                    // Create Countries chart
-                    createCountriesChart(stats.countries);
                 })
                 .catch(error => {
                     console.error('Error loading statistics:', error);
@@ -831,66 +814,7 @@
             });
         }
         
-        function createCountriesChart(countriesData) {
-            if (countriesChart) {
-                countriesChart.destroy();
-            }
-            
-            // Get all countries sorted by count
-            const allCountries = Object.entries(countriesData)
-                .sort((a, b) => b[1] - a[1]);
-            
-            // Take top 10 countries
-            const topCountries = allCountries.slice(0, 10);
-            
-            // Create the country arrays for the chart
-            const countryLabels = topCountries.map(entry => entry[0]);
-            const countryData = topCountries.map(entry => entry[1]);
-            const countryColors = [
-                '#3498db', // Blue
-                '#2ecc71', // Green
-                '#e74c3c', // Red
-                '#f39c12', // Orange
-                '#9b59b6', // Purple
-                '#1abc9c', // Turquoise
-                '#d35400', // Dark Orange
-                '#2c3e50', // Dark Blue
-                '#27ae60', // Dark Green
-                '#8e44ad'  // Dark Purple
-            ];
-            
-            const countriesCtx = document.getElementById('countries-chart').getContext('2d');
-            countriesChart = new Chart(countriesCtx, {
-                type: 'bar',
-                data: {
-                    labels: countryLabels,
-                    datasets: [{
-                        label: 'BINs per Country',
-                        data: countryData,
-                        backgroundColor: countryColors.slice(0, countryLabels.length),
-                        borderColor: '#ffffff',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                precision: 0
-                            }
-                        }
-                    }
-                }
-            });
-        }
+        // Countries chart removed as requested
         
         // BIN verification event handler
         document.addEventListener('DOMContentLoaded', function() {
