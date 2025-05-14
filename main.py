@@ -906,21 +906,6 @@ def api_stats():
             'error': str(e)
         }
         return jsonify(empty_stats), 500
-    except Exception as e:
-        logger.error(f"Error in api_stats: {str(e)}")
-        # Return properly structured empty stats for better client handling
-        empty_stats = {
-            'total_bins': 0,
-            'verified_count': 0,
-            'patch_status': {'Patched': 0, 'Exploitable': 0},
-            '3ds_support': {'3DS_v1': 0, '3DS_v2': 0, 'No_3DS': 0},
-            'brands': {},
-            'countries': {},
-            'exploit_types': {},
-            'verification': {'verified': 0, 'unverified': 0},
-            'error': str(e)
-        }
-        return jsonify(empty_stats), 500
 
 @app.route('/api/scan-history')
 def api_scan_history():
