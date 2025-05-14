@@ -315,8 +315,16 @@
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header">
+                    <div class="card-header d-flex justify-content-between align-items-center">
                         <h5>BIN Data</h5>
+                        <div class="export-buttons">
+                            <a href="/export-all-bins-csv" class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-file-earmark-spreadsheet"></i> Export All BINs
+                            </a>
+                            <a href="/export-exploitable-bins-csv" class="btn btn-sm btn-outline-danger ms-2">
+                                <i class="bi bi-file-earmark-spreadsheet"></i> Export Exploitable BINs
+                            </a>
+                        </div>
                     </div>
                     <div class="card-body">
                         <!-- Filters and Controls -->
