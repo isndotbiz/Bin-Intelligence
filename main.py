@@ -1186,45 +1186,64 @@ def export_all_bins_csv():
     import io
     
     try:
-        # Get all BINs from database
-        bins_data = get_bins_from_database(limit=None)
-        
-        # Create CSV file in memory
-        output = io.StringIO()
-        writer = csv.writer(output)
-        
-        # Write header row
-        writer.writerow([
-            'BIN', 'Issuer', 'Brand', 'Card Type', 'Card Level', 'Prepaid', 'Country', 
-            'Transaction Country', '3DS1 Supported', '3DS2 Supported', 'Patch Status', 
-            'Verified', 'Exploit Type'
-        ])
-        
-        # Write data rows
-        for bin_data in bins_data:
+        # Create a session for direct connection
+        with engine.connect() as conn:
+            # Query all BINs with related data
+            sql = """
+            SELECT 
+                b.bin_code, b.issuer, b.brand, b.card_type, b.card_level, 
+                b.prepaid, b.country, b.transaction_country, 
+                b.threeds1_supported, b.threeds2_supported, b.patch_status,
+                b.is_verified, et.name AS exploit_type
+            FROM 
+                bins b
+            LEFT JOIN 
+                bin_exploits be ON b.id = be.bin_id
+            LEFT JOIN 
+                exploit_types et ON be.exploit_type_id = et.id
+            ORDER BY 
+                b.bin_code
+            """
+            
+            # Execute and fetch results
+            result = conn.execute(text(sql))
+            
+            # Create CSV file in memory
+            output = io.StringIO()
+            writer = csv.writer(output)
+            
+            # Write header row
             writer.writerow([
-                bin_data.get('BIN', ''),
-                bin_data.get('issuer', ''),
-                bin_data.get('brand', ''),
-                bin_data.get('type', ''),
-                bin_data.get('card_level', ''),
-                'Yes' if bin_data.get('prepaid') else 'No',
-                bin_data.get('country', ''),
-                bin_data.get('transaction_country', ''),
-                'Yes' if bin_data.get('threeDS1Supported') else 'No',
-                'Yes' if bin_data.get('threeDS2supported') else 'No',
-                bin_data.get('patch_status', ''),
-                'Yes' if bin_data.get('is_verified') else 'No',
-                bin_data.get('exploit_type', '')
+                'BIN', 'Issuer', 'Brand', 'Card Type', 'Card Level', 'Prepaid', 'Country', 
+                'Transaction Country', '3DS1 Supported', '3DS2 Supported', 'Patch Status', 
+                'Verified', 'Exploit Type'
             ])
-        
-        # Create response with CSV file
-        output.seek(0)
-        return Response(
-            output.getvalue(),
-            mimetype="text/csv",
-            headers={"Content-disposition": "attachment; filename=all_bins.csv"}
-        )
+            
+            # Write data rows directly from SQL result
+            for row in result:
+                writer.writerow([
+                    row.bin_code,
+                    row.issuer or '',
+                    row.brand or '',
+                    row.card_type or '',
+                    row.card_level or '',
+                    'Yes' if row.prepaid else 'No',
+                    row.country or '',
+                    row.transaction_country or '',
+                    'Yes' if row.threeds1_supported else 'No',
+                    'Yes' if row.threeds2_supported else 'No',
+                    row.patch_status or '',
+                    'Yes' if row.is_verified else 'No',
+                    row.exploit_type or ''
+                ])
+            
+            # Create response with CSV file
+            output.seek(0)
+            return Response(
+                output.getvalue(),
+                mimetype="text/csv",
+                headers={"Content-disposition": "attachment; filename=all_bins.csv"}
+            )
     except Exception as e:
         logger.error(f"Error exporting all BINs to CSV: {str(e)}")
         return jsonify({'status': 'error', 'error': str(e)}), 500
@@ -1237,49 +1256,66 @@ def export_exploitable_bins_csv():
     import io
     
     try:
-        # Get all BINs from database
-        all_bins = get_bins_from_database(limit=None)
-        
-        # Filter for exploitable BINs only
-        exploitable_bins = [bin_data for bin_data in all_bins 
-                           if bin_data.get('patch_status') == 'Exploitable']
-        
-        # Create CSV file in memory
-        output = io.StringIO()
-        writer = csv.writer(output)
-        
-        # Write header row
-        writer.writerow([
-            'BIN', 'Issuer', 'Brand', 'Card Type', 'Card Level', 'Prepaid', 'Country', 
-            'Transaction Country', '3DS1 Supported', '3DS2 Supported', 'Patch Status', 
-            'Verified', 'Exploit Type'
-        ])
-        
-        # Write data rows
-        for bin_data in exploitable_bins:
+        # Create a session for direct connection
+        with engine.connect() as conn:
+            # Query only exploitable BINs with related data
+            sql = """
+            SELECT 
+                b.bin_code, b.issuer, b.brand, b.card_type, b.card_level, 
+                b.prepaid, b.country, b.transaction_country, 
+                b.threeds1_supported, b.threeds2_supported, b.patch_status,
+                b.is_verified, et.name AS exploit_type
+            FROM 
+                bins b
+            LEFT JOIN 
+                bin_exploits be ON b.id = be.bin_id
+            LEFT JOIN 
+                exploit_types et ON be.exploit_type_id = et.id
+            WHERE
+                b.patch_status = 'Exploitable'
+            ORDER BY 
+                b.bin_code
+            """
+            
+            # Execute and fetch results
+            result = conn.execute(text(sql))
+            
+            # Create CSV file in memory
+            output = io.StringIO()
+            writer = csv.writer(output)
+            
+            # Write header row
             writer.writerow([
-                bin_data.get('BIN', ''),
-                bin_data.get('issuer', ''),
-                bin_data.get('brand', ''),
-                bin_data.get('type', ''),
-                bin_data.get('card_level', ''),
-                'Yes' if bin_data.get('prepaid') else 'No',
-                bin_data.get('country', ''),
-                bin_data.get('transaction_country', ''),
-                'Yes' if bin_data.get('threeDS1Supported') else 'No',
-                'Yes' if bin_data.get('threeDS2supported') else 'No',
-                bin_data.get('patch_status', ''),
-                'Yes' if bin_data.get('is_verified') else 'No',
-                bin_data.get('exploit_type', '')
+                'BIN', 'Issuer', 'Brand', 'Card Type', 'Card Level', 'Prepaid', 'Country', 
+                'Transaction Country', '3DS1 Supported', '3DS2 Supported', 'Patch Status', 
+                'Verified', 'Exploit Type'
             ])
-        
-        # Create response with CSV file
-        output.seek(0)
-        return Response(
-            output.getvalue(),
-            mimetype="text/csv",
-            headers={"Content-disposition": "attachment; filename=exploitable_bins.csv"}
-        )
+            
+            # Write data rows directly from SQL result
+            for row in result:
+                writer.writerow([
+                    row.bin_code,
+                    row.issuer or '',
+                    row.brand or '',
+                    row.card_type or '',
+                    row.card_level or '',
+                    'Yes' if row.prepaid else 'No',
+                    row.country or '',
+                    row.transaction_country or '',
+                    'Yes' if row.threeds1_supported else 'No',
+                    'Yes' if row.threeds2_supported else 'No',
+                    row.patch_status or '',
+                    'Yes' if row.is_verified else 'No',
+                    row.exploit_type or ''
+                ])
+            
+            # Create response with CSV file
+            output.seek(0)
+            return Response(
+                output.getvalue(),
+                mimetype="text/csv",
+                headers={"Content-disposition": "attachment; filename=exploitable_bins.csv"}
+            )
     except Exception as e:
         logger.error(f"Error exporting exploitable BINs to CSV: {str(e)}")
         return jsonify({'status': 'error', 'error': str(e)}), 500
