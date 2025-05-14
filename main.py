@@ -34,7 +34,14 @@ if not DATABASE_URL:
 if DATABASE_URL.startswith('postgres://'):
     DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
     
-engine = create_engine(DATABASE_URL or "")  # Type check fix
+engine = create_engine(
+    DATABASE_URL or "", 
+    pool_pre_ping=True,  # Test connections before using them
+    pool_recycle=300,    # Recycle connections every 5 minutes
+    pool_size=10,        # Maximum number of connections in the pool
+    max_overflow=20,     # Maximum number of connections that can be created beyond pool_size
+    echo=False           # Don't log all SQL statements
+)
 db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
 
 # Check if tables exist before creating them
@@ -378,11 +385,15 @@ def get_bins_from_database(offset=0, limit=None, use_fresh_session=True):
     try:
         # Option to use a fresh session for better connection handling
         if use_fresh_session:
-            Session = sessionmaker(bind=engine)
+            # Create a fresh session with autocommit to avoid transaction issues
+            Session = sessionmaker(bind=engine, autocommit=True)
             session = Session()
             query_session = session
         else:
             query_session = db_session
+            
+        # Force database connection check before query
+        query_session.execute(text("SELECT 1"))
             
         # Use a more direct approach to avoid the column error
         query = query_session.query(
@@ -481,12 +492,44 @@ def get_bins_from_database(offset=0, limit=None, use_fresh_session=True):
         
     except Exception as e:
         logger.error(f"Error loading BINs from database: {str(e)}")
-        # Avoid recursive loop, return empty list instead of calling load_bin_data
-        return [], 0
+        # Try a more direct approach if the normal query fails
+        try:
+            # Create a fresh connection with AUTOCOMMIT
+            with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+                # Execute a simple query to test the connection
+                conn.execute(text("SELECT 1"))
+                
+                # Try a direct SQL query as fallback
+                sql = """
+                SELECT b.bin_code, et.name as exploit_type 
+                FROM bins b 
+                LEFT JOIN bin_exploits be ON b.id = be.bin_id 
+                LEFT JOIN exploit_types et ON be.exploit_type_id = et.id 
+                LIMIT 100
+                """
+                result = conn.execute(text(sql))
+                
+                # Process the results into a simple format
+                bins_data = []
+                for row in result:
+                    bins_data.append({
+                        'BIN': row[0],
+                        'exploit_type': row[1] if row[1] else 'Unknown'
+                    })
+                
+                logger.info(f"Loaded {len(bins_data)} BINs from database using fallback query")
+                return bins_data, len(bins_data)
+        except Exception as inner_e:
+            logger.error(f"Fallback query also failed: {str(inner_e)}")
+            # Final fallback - return empty list
+            return [], 0
     finally:
         # Clean up the fresh session if we created one
         if session:
-            session.close()
+            try:
+                session.close()
+            except Exception:
+                pass  # Ignore errors during cleanup
 
 def get_database_statistics():
     """Get statistics from the database with improved connection handling"""
