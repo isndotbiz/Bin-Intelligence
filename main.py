@@ -359,12 +359,12 @@ def get_bin_statistics(bins_data):
 @app.route('/')
 def index():
     """Dashboard home page"""
-    return render_template('simple_dashboard.html')
-    
-@app.route('/fixed')
-def fixed_dashboard():
-    """Fixed dashboard page with tabs and charts"""
     return render_template('fixed_dashboard.html')
+    
+@app.route('/simple')
+def simple_dashboard():
+    """Simple dashboard page without tabs and charts"""
+    return render_template('simple_dashboard.html')
     
 @app.route('/old')
 def old_dashboard():
