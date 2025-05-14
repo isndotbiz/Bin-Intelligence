@@ -537,25 +537,20 @@
         let currentBinsData = [];
         
         // Function to load BIN data with pagination
-        function loadBINData(page = 1, loadAllTabs = true) {
+        function loadBINData(page = 1) {
             // Show loading spinner
             document.getElementById('table-spinner').style.display = 'flex';
             
             // Clear all tables
             document.getElementById('bins-table-body').innerHTML = '';
-            if (loadAllTabs) {
-                document.getElementById('visa-bins-body').innerHTML = '';
-                document.getElementById('mastercard-bins-body').innerHTML = '';
-                document.getElementById('amex-bins-body').innerHTML = '';
-                document.getElementById('discover-bins-body').innerHTML = '';
-            }
+            document.getElementById('visa-bins-body').innerHTML = '';
+            document.getElementById('mastercard-bins-body').innerHTML = '';
+            document.getElementById('amex-bins-body').innerHTML = '';
+            document.getElementById('discover-bins-body').innerHTML = '';
             
-            // Fetch all BINs (not just the paginated ones) to populate brand tabs completely
-            const apiUrl = loadAllTabs 
-                ? '/api/bins?per_page=1000' // Load all BINs for complete tab data
-                : `/api/bins?page=${page}&per_page=${perPage}`; // Just load current page
-                
-            fetch(apiUrl)
+            // We'll load all BINs in one request and handle pagination client-side
+            // This simplifies our approach and ensures consistent data across tabs
+            fetch('/api/bins?per_page=1000')
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`HTTP error! Status: ${response.status}`);
@@ -569,21 +564,8 @@
                     // Store current page
                     currentPage = page;
                     
-                    // Update pagination info
-                    const startIdx = (currentPage - 1) * perPage + 1;
-                    const endIdx = Math.min(startIdx + perPage - 1, data.pagination.total_bins);
-                    document.getElementById('pagination-info').textContent = 
-                        `Showing ${startIdx}-${endIdx} of ${data.pagination.total_bins} BINs`;
-                    
-                    // Store current data for client-side sorting
+                    // Store all BINs for client-side operations
                     currentBinsData = data.bins;
-                    
-                    // Generate pagination controls
-                    generatePagination({
-                        current_page: page,
-                        total_pages: Math.ceil(data.pagination.total_bins / perPage),
-                        total_bins: data.pagination.total_bins
-                    });
                     
                     // Group data by brand for tab population
                     const binsByBrand = {
@@ -593,28 +575,40 @@
                         discover: []
                     };
                     
-                    // First pass - count all brand totals for all tabs
-                    if (loadAllTabs) {
-                        data.bins.forEach(bin => {
-                            const brand = (bin.brand || '').toLowerCase();
-                            if (brand.includes('visa')) {
-                                binsByBrand.visa.push(bin);
-                            } else if (brand.includes('mastercard')) {
-                                binsByBrand.mastercard.push(bin);
-                            } else if (brand.includes('american express') || brand.includes('amex')) {
-                                binsByBrand.amex.push(bin);
-                            } else if (brand.includes('discover')) {
-                                binsByBrand.discover.push(bin);
-                            }
-                        });
-                    }
+                    // Sort BINs into brand categories
+                    data.bins.forEach(bin => {
+                        const brand = (bin.brand || '').toLowerCase();
+                        if (brand.includes('visa')) {
+                            binsByBrand.visa.push(bin);
+                        } else if (brand.includes('mastercard')) {
+                            binsByBrand.mastercard.push(bin);
+                        } else if (brand.includes('american express') || brand.includes('amex')) {
+                            binsByBrand.amex.push(bin);
+                        } else if (brand.includes('discover')) {
+                            binsByBrand.discover.push(bin);
+                        }
+                    });
                     
-                    // Calculate the bins to display on the current page
+                    // Update pagination info
+                    const totalBins = data.pagination.total_bins;
+                    const startIdx = (currentPage - 1) * perPage + 1;
+                    const endIdx = Math.min(startIdx + perPage - 1, totalBins);
+                    document.getElementById('pagination-info').textContent = 
+                        `Showing ${startIdx}-${endIdx} of ${totalBins} BINs`;
+                    
+                    // Generate pagination controls
+                    generatePagination({
+                        current_page: page,
+                        total_pages: Math.ceil(totalBins / perPage),
+                        total_bins: totalBins
+                    });
+                    
+                    // Calculate the bins to display on the current page for the "All BINs" tab
                     const startIndex = (page - 1) * perPage;
                     const endIndex = Math.min(startIndex + perPage, data.bins.length);
                     const currentPageBins = data.bins.slice(startIndex, endIndex);
                     
-                    // Process and organize BINs for the current page in "All BINs" tab
+                    // Process BINs for the "All BINs" tab with pagination
                     currentPageBins.forEach(bin => {
                         // Create a base row for the All BINs tab
                         const row = document.createElement('tr');
