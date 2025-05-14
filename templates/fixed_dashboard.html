@@ -495,6 +495,7 @@
                                                 <th>Patch Status</th>
                                                 <th>Issuer</th>
                                                 <th>Type</th>
+                                                <th>Card Level</th>
                                                 <th>Country</th>
                                                 <th>3DS1</th>
                                                 <th>3DS2</th>
@@ -703,7 +704,7 @@
             if (bins.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="10" class="text-center">
+                        <td colspan="11" class="text-center">
                             <div class="alert alert-info">No ${brand.toUpperCase()} BINs found</div>
                         </td>
                     </tr>
@@ -733,6 +734,7 @@
                     <td>${bin.patch_status || 'Unknown'}</td>
                     <td>${bin.issuer || 'Unknown'}</td>
                     <td>${bin.type || 'Unknown'}</td>
+                    <td>${bin.card_level || 'Standard'}</td>
                     <td>${bin.country || 'Unknown'}</td>
                     <td>${bin.threeDS1Supported ? '✓' : '✗'}</td>
                     <td>${bin.threeDS2supported ? '✓' : '✗'}</td>
@@ -760,7 +762,7 @@
                     `;
                     document.getElementById('visa-bins-body').innerHTML = `
                         <tr>
-                            <td colspan="10" class="text-center">
+                            <td colspan="11" class="text-center">
                                 <div class="alert alert-danger">
                                     Error loading BIN data: ${error.message}
                                 </div>
