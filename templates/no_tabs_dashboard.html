@@ -199,7 +199,6 @@
                         <div class="chart-container">
                             <canvas id="brands-chart"></canvas>
                         </div>
-                        <div class="brand-legend mt-2" id="brands-legend"></div>
                     </div>
                 </div>
             </div>
@@ -778,29 +777,7 @@
                 }
             });
             
-            // Create the brand legend with better styling
-            const brandsLegend = document.getElementById('brands-legend');
-            brandsLegend.innerHTML = '';
-            
-            brandEntries.forEach(([brand, count]) => {
-                const color = brandColors[brand.toUpperCase()] || brandColors.DEFAULT;
-                
-                const legendItem = document.createElement('div');
-                legendItem.className = 'brand-item';
-                legendItem.dataset.brand = brand.toLowerCase();
-                
-                const colorBox = document.createElement('span');
-                colorBox.className = 'brand-color';
-                colorBox.style.backgroundColor = color;
-                
-                const brandText = document.createElement('span');
-                brandText.textContent = `${brand}: ${count}`;
-                
-                legendItem.appendChild(colorBox);
-                legendItem.appendChild(brandText);
-                
-                brandsLegend.appendChild(legendItem);
-            });
+            // Brand legend has been removed as requested
         }
         
         // Countries chart removed as requested
