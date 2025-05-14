@@ -1163,6 +1163,7 @@ def generate_more_bins():
         # Return success response
         return jsonify({
             'status': 'success',
+            'message': f"Successfully generated {created} new BINs and updated {updated} existing BINs. Total BINs: {total_bins}",
             'new_bins': created,
             'updated_bins': updated,
             'total_bins': total_bins
