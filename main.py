@@ -664,7 +664,7 @@ def get_database_statistics():
 
 @app.route('/api/bins')
 def api_bins():
-    """API endpoint to get BIN data with optional pagination"""
+    """API endpoint to get BIN data with optional pagination using direct SQL for reliability"""
     try:
         # Get pagination parameters
         page = request.args.get('page', 1, type=int)
@@ -673,50 +673,86 @@ def api_bins():
         # Check if we need to return all BINs (for client-side operations)
         return_all = per_page >= 1000
         
-        # Determine database limit and offset
-        if return_all:
-            # Return all BINs - no limit
-            limit = None
-            offset = 0
-        else:
-            # Calculate offset for normal pagination
-            offset = (page - 1) * per_page
-            limit = per_page
-        
-        # Get BINs from database with improved error handling and built-in pagination
-        try:
-            # Use database-level pagination (unless returning all)
-            bins_data, total_bins = get_bins_from_database(offset=offset, limit=limit, use_fresh_session=True)
-            logger.info(f"Loaded {len(bins_data)} BINs from database using optimized query")
-        except Exception as db_error:
-            logger.error(f"Database error when fetching BINs: {str(db_error)}")
-            # Fallback to empty results with proper structure
+        # Direct SQL query with AUTOCOMMIT for reliable connection
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            # Get total count first
+            count_query = "SELECT COUNT(*) FROM bins"
+            result = conn.execute(text(count_query))
+            total_bins = result.scalar() or 0
+            
+            # Calculate pagination parameters
+            total_pages = max(1, (total_bins + per_page - 1) // per_page)
+            page = max(1, min(page, total_pages))
+            
+            # Prepare query with pagination
+            if return_all:
+                # Return all BINs with no LIMIT
+                offset = 0
+                limit_clause = ""
+            else:
+                offset = (page - 1) * per_page
+                limit_clause = f"LIMIT {per_page} OFFSET {offset}"
+            
+            # Core query to fetch BIN data with JOIN for exploit types
+            sql = f"""
+            SELECT 
+                b.id, b.bin_code, b.issuer, b.brand, b.card_type, b.card_level,
+                b.prepaid, b.country, b.transaction_country, 
+                b.threeds1_supported, b.threeds2_supported, b.patch_status,
+                b.is_verified, b.verified_at, b.data_source, 
+                b.issuer_website, b.issuer_phone, et.name AS exploit_type
+            FROM 
+                bins b
+            LEFT JOIN 
+                bin_exploits be ON b.id = be.bin_id
+            LEFT JOIN 
+                exploit_types et ON be.exploit_type_id = et.id
+            ORDER BY 
+                b.bin_code
+            {limit_clause}
+            """
+            
+            # Execute and fetch results
+            result = conn.execute(text(sql))
+            
+            # Process rows into bins_data list
             bins_data = []
-            total_bins = 0
-            logger.warning("No BIN data available from database due to error")
-        
-        # Calculate total pages based on per_page parameter
-        total_pages = max(1, (total_bins + per_page - 1) // per_page)  # At least 1 page
-        
-        # Ensure page is in valid range
-        page = max(1, min(page, total_pages))
-        
-        # Prepare response with pagination metadata
-        response = {
-            'bins': bins_data,
-            'pagination': {
-                'total_bins': total_bins,
-                'total_pages': total_pages,
-                'current_page': page,
-                'per_page': per_page
+            for row in result:
+                bin_data = {
+                    'BIN': row.bin_code,
+                    'issuer': row.issuer,
+                    'brand': row.brand,
+                    'type': row.card_type,
+                    'card_level': row.card_level,
+                    'prepaid': row.prepaid,
+                    'country': row.country,
+                    'transaction_country': row.transaction_country,
+                    'threeDS1Supported': row.threeds1_supported,
+                    'threeDS2supported': row.threeds2_supported,
+                    'patch_status': row.patch_status,
+                    'is_verified': row.is_verified,
+                    'exploit_type': row.exploit_type
+                }
+                bins_data.append(bin_data)
+            
+            logger.info(f"Loaded {len(bins_data)} BINs from database using direct SQL")
+            
+            # Prepare response with pagination metadata
+            response = {
+                'bins': bins_data,
+                'pagination': {
+                    'total_bins': total_bins,
+                    'total_pages': total_pages,
+                    'current_page': page,
+                    'per_page': per_page
+                }
             }
-        }
-        
-        return jsonify(response)
+            
+            return jsonify(response)
+            
     except Exception as e:
         logger.error(f"Error in api_bins: {str(e)}")
         # Return structured response even on error for better client handling
-        # Set default per_page value since original might be unavailable
         default_per_page = 200
         
         return jsonify({
@@ -771,27 +807,105 @@ def api_debug():
 
 @app.route('/api/stats')
 def api_stats():
-    """API endpoint to get statistics with improved error handling"""
+    """API endpoint to get statistics using direct SQL for reliability"""
     try:
-        # Get stats using the improved database connection handling
-        stats = get_database_statistics()
+        # Use direct SQL queries with AUTOCOMMIT to avoid connection issues
+        stats = {}
         
-        # If stats are empty, return empty structure but don't try to load from file
-        if not stats or not stats.get('total_bins'):
-            logger.warning("No statistics available from database")
-            # Return empty but properly structured stats
-            stats = {
-                'total_bins': 0,
-                'verified_count': 0,
-                'patch_status': {'Patched': 0, 'Exploitable': 0},
-                '3ds_support': {'3DS_v1': 0, '3DS_v2': 0, 'No_3DS': 0},
-                'brands': {},
-                'countries': {},
-                'exploit_types': {},
-                'verification': {'verified': 0, 'unverified': 0}
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            # Get total BIN count
+            result = conn.execute(text("SELECT COUNT(*) FROM bins"))
+            stats['total_bins'] = result.scalar() or 0
+            
+            # Get verified BIN count
+            result = conn.execute(text("SELECT COUNT(*) FROM bins WHERE is_verified = TRUE"))
+            stats['verified_count'] = result.scalar() or 0
+            
+            # Get patch status counts
+            patch_status = {}
+            result = conn.execute(text("SELECT patch_status, COUNT(*) FROM bins GROUP BY patch_status"))
+            for row in result:
+                status, count = row
+                patch_status[status or "unknown"] = count
+            stats['patch_status'] = patch_status
+            
+            # Get 3DS support statistics
+            threeds_stats = {'3DS_v1': 0, '3DS_v2': 0, 'No_3DS': 0}
+            result = conn.execute(text("SELECT threeds1_supported, COUNT(*) FROM bins GROUP BY threeds1_supported"))
+            for row in result:
+                threeds1, count = row
+                if threeds1:
+                    threeds_stats['3DS_v1'] = count
+            
+            result = conn.execute(text("SELECT threeds2_supported, COUNT(*) FROM bins GROUP BY threeds2_supported"))
+            for row in result:
+                threeds2, count = row
+                if threeds2:
+                    threeds_stats['3DS_v2'] = count
+            
+            # Calculate No_3DS
+            threeds_stats['No_3DS'] = stats['total_bins'] - (threeds_stats['3DS_v1'] + threeds_stats['3DS_v2'])
+            stats['3ds_support'] = threeds_stats
+            
+            # Get brand counts
+            brands = {}
+            result = conn.execute(text("SELECT brand, COUNT(*) FROM bins GROUP BY brand ORDER BY COUNT(*) DESC LIMIT 10"))
+            for row in result:
+                brand, count = row
+                if brand:
+                    brand_upper = brand.upper() if brand else ""
+                    if 'AMEX' in brand_upper:
+                        brands['AMERICAN EXPRESS'] = brands.get('AMERICAN EXPRESS', 0) + count
+                    else:
+                        brands[brand] = count
+            stats['brands'] = brands
+            
+            # Get country counts
+            countries = {}
+            result = conn.execute(text("SELECT country, COUNT(*) FROM bins GROUP BY country ORDER BY COUNT(*) DESC LIMIT 10"))
+            for row in result:
+                country, count = row
+                countries[country or "unknown"] = count
+            stats['countries'] = countries
+            
+            # Get exploit type counts
+            exploit_types = {}
+            sql = """
+            SELECT et.name, COUNT(*) 
+            FROM exploit_types et
+            JOIN bin_exploits be ON et.id = be.exploit_type_id
+            GROUP BY et.name
+            ORDER BY COUNT(*) DESC
+            """
+            result = conn.execute(text(sql))
+            for row in result:
+                exploit, count = row
+                exploit_types[exploit] = count
+            stats['exploit_types'] = exploit_types
+            
+            # Get verification stats
+            stats['verification'] = {
+                'verified': stats['verified_count'],
+                'unverified': stats['total_bins'] - stats['verified_count']
             }
             
+        logger.info("Successfully loaded statistics using direct SQL")
         return jsonify(stats)
+    except Exception as e:
+        logger.error(f"Error in api_stats: {str(e)}")
+        # Return properly structured empty stats for better client handling
+        empty_stats = {
+            'total_bins': 0,
+            'verified_count': 0,
+            'patch_status': {'Patched': 0, 'Exploitable': 0},
+            '3ds_support': {'3DS_v1': 0, '3DS_v2': 0, 'No_3DS': 0},
+            'brands': {},
+            'countries': {},
+            'exploit_types': {},
+            'verification': {'verified': 0, 'unverified': 0},
+            'error': str(e)
+        }
+        return jsonify(empty_stats), 500
     except Exception as e:
         logger.error(f"Error in api_stats: {str(e)}")
         # Return properly structured empty stats for better client handling
