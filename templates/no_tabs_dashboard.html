@@ -424,8 +424,8 @@
         const perPage = 200;
         
         // Sorting variables
-        let currentSortField = null;
-        let currentSortDirection = null;
+        let currentSortField = "bin";
+        let currentSortDirection = "asc";
         let currentBinsData = [];
         
         // Function to load BIN data with pagination
@@ -472,6 +472,41 @@
                     const startIndex = (page - 1) * perPage;
                     const endIndex = Math.min(startIndex + perPage, data.bins.length);
                     const currentPageBins = data.bins.slice(startIndex, endIndex);
+                    
+                    // Sort bins data based on current sort field and direction
+                    if (currentSortField) {
+                        data.bins.sort((a, b) => {
+                            let valueA, valueB;
+                            
+                            // Handle different field types
+                            if (currentSortField === 'bin') {
+                                valueA = a.BIN;
+                                valueB = b.BIN;
+                            } else if (currentSortField === 'threeDS1Supported' || 
+                                      currentSortField === 'threeDS2supported' ||
+                                      currentSortField === 'is_verified' || 
+                                      currentSortField === 'prepaid') {
+                                // Boolean fields
+                                valueA = a[currentSortField] ? 1 : 0;
+                                valueB = b[currentSortField] ? 1 : 0;
+                            } else {
+                                // String fields
+                                valueA = a[currentSortField] || '';
+                                valueB = b[currentSortField] || '';
+                            }
+                            
+                            // Compare values based on their type
+                            if (typeof valueA === 'string') {
+                                const comparison = valueA.localeCompare(valueB);
+                                return currentSortDirection === 'asc' ? comparison : -comparison;
+                            } else {
+                                // Number or boolean
+                                return currentSortDirection === 'asc' 
+                                    ? valueA - valueB 
+                                    : valueB - valueA;
+                            }
+                        });
+                    }
                     
                     // Process BINs for display
                     currentPageBins.forEach(bin => {
