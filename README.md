@@ -1,124 +1,221 @@
 # BIN Intelligence System
 
-A Python-based system that tracks, classifies, and analyzes exploited credit card BINs (Bank Identification Numbers) from public sources. The system scrapes card-dump feeds, classifies exploits by type based on contextual keywords, and enriches the data with issuer information and 3DS support status.
+A comprehensive Python-powered BIN Intelligence System that tracks, classifies, and analyzes exploited credit card BINs from verified sources. The system provides advanced fraud intelligence through real-time verification, data enrichment, and detailed vulnerability analysis specifically for e-commerce protection.
 
-## Features
+## 🚀 Features
 
-- Scrapes public card-dump feeds (e.g., Pastebin) for BINs and exploit data
-- Extracts PANs (Primary Account Numbers) and their BINs using regex
-- Classifies BINs by exploit type using keyword detection
-- Filters out BINs without meaningful classification
-- Focuses only on major card networks (3, 4, 5, or 6 series BINs):
-  - 3-series: American Express
-  - 4-series: Visa
-  - 5-series: MasterCard
-  - 6-series: Discover
-- Enriches BINs with issuer information
-- Checks 3DS support and determines patch status
-- Detects cross-border fraud by tracking transaction countries
-- Highlights international transactions with different origin/destination countries
-- Provides a shareable fraud intelligence dashboard
-- Outputs structured data to CSV and JSON files
+### Core Functionality
+- **Real-time BIN Verification**: Integration with Neutrino API for authentic BIN data
+- **E-commerce Fraud Detection**: Focus on card-not-present, false-positive CVV, and no-Auto-3DS vulnerabilities
+- **Advanced Data Enrichment**: Automatic enrichment of BIN data with issuer information and 3DS support
+- **Comprehensive Dashboard**: Interactive web interface with charts and data visualization
+- **Export Capabilities**: CSV export for all BINs and exploitable BINs specifically
 
-## Classification Keywords
+### Technical Features
+- **Database Management**: PostgreSQL with SQLAlchemy ORM
+- **Data Processing**: Python-based fraud feed analysis and BIN classification
+- **Web Interface**: Flask-based dashboard with Bootstrap dark theme
+- **API Integration**: Neutrino API for real-world BIN verification
+- **Pagination & Sorting**: Client-side table sorting and server-side pagination
+- **Real-time Updates**: Dynamic data loading and verification
 
-The system classifies exploits into the following categories based on keywords found in the text:
+## 🛠️ Technology Stack
 
-| Keywords | Exploit Type |
-|----------|-------------|
-| "skim", "atm" | skimming |
-| "cnp", "ecom", "online" | card-not-present |
-| "gift", "voucher" | gift-card-fraud |
-| "chargeback", "fraud" | unauthorized-chargebacks |
-| "dump", "track" | track-data-compromise |
-| "malware" | malware-compromise |
-| "raw" | raw-dump |
-| "fullz" | identity-theft |
-| "cvv" | cvv-compromise |
-| Different transaction/origin countries | cross-border |
+- **Backend**: Python 3.11, Flask, SQLAlchemy
+- **Database**: PostgreSQL
+- **Frontend**: HTML5, Bootstrap 5.3, Chart.js
+- **APIs**: Neutrino API for BIN verification
+- **Server**: Gunicorn WSGI server
+- **Data Processing**: Trafilatura for web scraping
 
-If multiple exploit types are detected, the most frequent one is assigned to the BIN.
+## 🏗️ Architecture
 
-## Patch Status Logic
+### Database Schema
+- **BINs Table**: Core BIN data with issuer, brand, card type, and security features
+- **Exploit Types**: Classification of vulnerability types
+- **BIN Exploits**: Association table linking BINs to exploit types
+- **Scan History**: Historical data of system scans
 
-The system determines a BIN's patch status based on its 3DS (3-D Secure) support:
+### Key Components
+- **BIN Enricher**: Processes and enriches BIN data using Neutrino API
+- **Fraud Feed Scraper**: Analyzes public sources for compromised BINs
+- **Neutrino API Client**: Handles API communication and data transformation
+- **Dashboard**: Web interface for data visualization and management
 
-- **Patched**: If the BIN supports either 3DS version 1 or 3DS version 2
-- **Exploitable**: If the BIN doesn't support any version of 3DS
+## 📋 Prerequisites
 
-This logic is implemented in the `_determine_patch_status` method of the `BinEnricher` class:
+- Python 3.11+
+- PostgreSQL database
+- Neutrino API credentials (for BIN verification)
 
-```python
-def _determine_patch_status(self, threeDS1Supported: bool, threeDS2supported: bool) -> str:
-    """
-    Determine the patch status based on 3DS support
-    
-    Args:
-        threeDS1Supported: Whether 3DS v1 is supported
-        threeDS2supported: Whether 3DS v2 is supported
-        
-    Returns:
-        "Patched" or "Exploitable"
-    """
-    if threeDS1Supported or threeDS2supported:
-        return "Patched"
-    else:
-        return "Exploitable"
+## 🚀 Installation & Setup
+
+### Environment Setup
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd bin-intelligence-system
+   ```
+
+2. **Set up environment variables**
+   ```bash
+   export DATABASE_URL="postgresql://username:password@host:port/database"
+   export NEUTRINO_API_KEY="your-neutrino-api-key"
+   export NEUTRINO_API_USER_ID="your-neutrino-user-id"
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### Database Setup
+The system automatically creates database tables on first run. No manual migration is required.
+
+### Running the Application
+```bash
+# Start the web application
+gunicorn --bind 0.0.0.0:5000 --reuse-port --reload main:app
+
+# Or run the BIN intelligence workflow
+python main.py
 ```
 
-3DS support acts as a security measure that helps prevent unauthorized transactions, making BINs with 3DS support less vulnerable to exploitation.
+## 📊 Usage
 
-## Cross-Border Fraud Detection
+### Web Dashboard
+Navigate to `http://localhost:5000` to access the dashboard featuring:
+- **Statistics Overview**: Total BINs, exploit types, and patch status
+- **Interactive Charts**: Visual representation of data by brand, 3DS support, and exploit types
+- **BIN Data Table**: Sortable table with filtering options
+- **Export Functions**: Download data as CSV files
+- **Real-time Verification**: Verify individual BINs using Neutrino API
 
-The system includes advanced cross-border fraud detection, which identifies card transactions occurring in countries different from the card's country of issuance. This helps detect common cross-border fraud scenarios, which are a significant threat in the payment card industry.
+### API Endpoints
+- `GET /api/bins` - Retrieve BIN data with pagination
+- `GET /api/stats` - Get system statistics
+- `GET /verify-bin/<bin_code>` - Verify a specific BIN
+- `GET /export-all-bins-csv` - Export all BINs to CSV
+- `GET /export-exploitable-bins-csv` - Export exploitable BINs to CSV
 
-### How Cross-Border Detection Works
+### Key Features
+1. **BIN Verification**: Enter a 6-digit BIN to get real-time verification
+2. **Data Filtering**: Filter by exploitable BINs or verified status
+3. **Table Sorting**: Click column headers to sort data
+4. **Data Export**: Download filtered or complete datasets
+5. **Pagination**: Navigate through large datasets efficiently
 
-1. The system stores the country of issuance for each BIN (based on Neutrino API data)
-2. It tracks transaction_country data when available
-3. Cards used outside their country of origin are flagged as possible cross-border fraud
-4. The dashboard highlights these transactions with warning indicators
+## 🔒 Security & Compliance
 
-This detection is particularly useful for identifying:
-- Cards stolen in one country and used in another
-- Card data sold on international dark web markets
-- Organized fraud rings operating across national borders
+### Data Sources
+- **Neutrino API**: Primary source for authentic BIN data
+- **Real-world Data Only**: No synthetic or mock data is used
+- **Verified Sources**: All data comes from legitimate fraud intelligence feeds
 
-### Dashboard Integration
+### Security Features
+- **3DS Analysis**: Comprehensive 3D Secure support detection
+- **Patch Status Tracking**: Identifies exploitable vs. patched BINs
+- **Fraud Classification**: Categorizes e-commerce specific vulnerabilities
 
-The dashboard displays cross-border transactions with:
-- Clear visual indicators for different origin/destination pairs
-- Transaction country highlighted in yellow for quick identification
-- "cross-border" exploit type classification
+## 🗃️ Database Schema
 
-## Configuration Parameters
+### BINs Table
+- `bin_code`: 6-digit Bank Identification Number
+- `issuer`: Card issuing bank/institution
+- `brand`: Card network (VISA, MASTERCARD, AMEX, DISCOVER)
+- `card_type`: Type of card (credit, debit, prepaid)
+- `card_level`: Card tier (STANDARD, GOLD, PLATINUM, etc.)
+- `country`: Issuing country (ISO code)
+- `threeds1_supported`: 3D Secure v1 support
+- `threeds2_supported`: 3D Secure v2 support
+- `patch_status`: Security status (Exploitable/Patched)
+- `is_verified`: Verification status via Neutrino API
 
-The system's behavior can be configured using the following parameters in `main.py`:
+### Exploit Classification
+- **card-not-present**: BINs vulnerable to CNP fraud
+- **false-positive-cvv**: BINs with weak CVV verification
+- **no-auto-3ds**: BINs lacking automatic 3D Secure
 
-- `top_n`: Number of top BINs to process, sorted by frequency (default: 100)
-- `sample_pages`: Number of pages/posts to sample from each source (default: 5)
-- `cross_border`: Enable/disable cross-border fraud detection (default: true)
+## 🔧 Configuration
 
-Example usage:
+### Environment Variables
+- `DATABASE_URL`: PostgreSQL connection string
+- `NEUTRINO_API_KEY`: Neutrino API authentication key
+- `NEUTRINO_API_USER_ID`: Neutrino API user identifier
+- `FLASK_SECRET_KEY`: Flask session secret (optional)
 
-```python
-# Process top 200 BINs, sampling 10 pages, with cross-border detection
-enriched_bins = process_exploited_bins(top_n=200, sample_pages=10)
+### Performance Settings
+- Default pagination: 200 records per page
+- API timeout: 10 seconds
+- Database connection pooling enabled
+- Automatic connection retry with exponential backoff
 
-# Generate BINs with cross-border detection enabled
-fetch('/generate-bins?count=15&cross_border=true')
-```
+## 🚀 Deployment
 
-## Output Format
+### Production Deployment
+1. Set up PostgreSQL database
+2. Configure environment variables
+3. Install dependencies
+4. Run database migrations (automatic)
+5. Start Gunicorn server
 
-The system outputs two files:
+### Replit Deployment
+The application is optimized for Replit deployment with:
+- Automatic workflow detection
+- Built-in database support
+- Environment variable management
+- One-click deployment capability
 
-1. `exploited_bins.csv`: A CSV file containing the enriched BIN data
-2. `exploited_bins.json`: A JSON file containing the same data
+## 📈 Monitoring & Logging
 
-Both files include the following fields for each BIN:
-```
-BIN, exploit_type, patch_status, issuer, brand, type, prepaid, country, transaction_country, threeDS1Supported, threeDS2supported
-```
+### Logging
+- Comprehensive logging throughout the application
+- Database operation tracking
+- API call monitoring
+- Error handling and reporting
 
-Note: Only BINs that have been classified with an exploit type are included in the output. BINs without meaningful classification are discarded during processing.
+### Metrics
+- Total BINs processed
+- Verification success rates
+- Database performance metrics
+- API response times
+
+## 🤝 Contributing
+
+### Development Setup
+1. Fork the repository
+2. Create a feature branch
+3. Make changes following the coding standards
+4. Test thoroughly
+5. Submit a pull request
+
+### Code Standards
+- Python PEP 8 compliance
+- Comprehensive error handling
+- Database transaction management
+- API rate limiting respect
+
+## 📄 License
+
+This project is intended for educational and legitimate fraud prevention purposes only. Use responsibly and in accordance with applicable laws and regulations.
+
+## 🆘 Support
+
+For technical support or questions:
+1. Check the CHANGELOG for recent updates
+2. Review the database logs for error details
+3. Verify API credentials and connectivity
+4. Ensure all environment variables are set correctly
+
+## 🔗 API Documentation
+
+### Neutrino API Integration
+The system integrates with Neutrino API's BIN Lookup service for real-time verification:
+- Endpoint: `https://neutrinoapi.net/bin-lookup`
+- Authentication: API key and user ID required
+- Rate limits: Respected through proper request handling
+- Response caching: Implemented for optimal performance
+
+---
+
+**Note**: This system is designed exclusively for legitimate fraud prevention and educational purposes. Always ensure compliance with applicable laws and regulations when deploying in production environments.
