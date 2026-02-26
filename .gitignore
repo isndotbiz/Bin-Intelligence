@@ -113,3 +113,10 @@ venv.bak/
 bin_data.json
 exploited_bins.json
 exploited_bins.csv
+
+# Serena (session-local)
+.serena/cache/
+.serena/memories/
+
+# Local MCP config (machine-specific)
+.mcp.json
