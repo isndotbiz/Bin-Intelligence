@@ -120,3 +120,4 @@ exploited_bins.csv
 
 # Local MCP config (machine-specific)
 .mcp.json
+compound-engineering.local.md
