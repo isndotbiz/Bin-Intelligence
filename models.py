@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -32,7 +32,14 @@ class BIN(Base):
     data_source = Column(String(50), default="Neutrino API")  # Source of the BIN data
     issuer_website = Column(String(200), nullable=True)  # Additional info from verification
     issuer_phone = Column(String(50), nullable=True)  # Additional info from verification
-    
+
+    # CVV verification tracking
+    cvv_response_code = Column(String(10), nullable=True)  # M, N, P, U, S — last observed CVV response
+    cvv_decline_rate = Column(Float, nullable=True)  # Aggregated CVV decline rate (0.0-1.0)
+
+    # 3DS data provenance
+    threeds_data_source = Column(String(50), nullable=True)  # "adyen", "heuristic", "mpgs"
+
     # Relationships
     exploits = relationship("BINExploit", back_populates="bin", cascade="all, delete-orphan")
     

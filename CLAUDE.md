@@ -1,5 +1,12 @@
 # Bin-Intelligence
 
+## 1Password Connect — Credential Access
+All credentials via 1Password Connect. No service accounts, no desktop auth, no plaintext .env secrets.
+- `OP_CONNECT_HOST=http://100.67.89.29:8100`
+- `OP_CONNECT_TOKEN` — set in global CLAUDE.md (inherited automatically)
+- Vaults: `Research`, `TrueNAS Infrastructure`
+- Usage: `op item get "Name" --vault "Research" --format json`
+
 BIN intelligence platform for e-commerce fraud analysis, enrichment, and reporting. A BIN (Bank Identification Number) is the first 6 digits of a payment card; this system classifies BINs by 3D Secure posture, issuer, and exploit type.
 
 Current version: **2.3.0**
@@ -18,6 +25,9 @@ Current version: **2.3.0**
 DATABASE_URL="postgresql://user:pass@host:5432/dbname"  # Required on startup
 NEUTRINO_API_USER_ID="your_user_id"                     # Required for enrichment
 NEUTRINO_API_KEY="your_api_key"                         # Required for enrichment
+ADYEN_API_KEY="your_adyen_key"                          # Optional: real 3DS enrollment data
+ADYEN_MERCHANT_ACCOUNT="your_merchant"                  # Optional: required with ADYEN_API_KEY
+ADYEN_USE_TEST="true"                                   # Optional: use Adyen test environment (default: true)
 ```
 
 `DATABASE_URL` starting with `postgres://` is auto-rewritten to `postgresql://` at startup. App raises `ValueError` and refuses to start if `DATABASE_URL` is unset.
@@ -26,8 +36,9 @@ NEUTRINO_API_KEY="your_api_key"                         # Required for enrichmen
 
 - `main.py` - Flask app, DB engine/session setup, all API and web endpoints
 - `models.py` - SQLAlchemy models: `BIN`, `ExploitType`, `BINExploit`, `ScanHistory`
-- `bin_enricher.py` - `BinEnricher` class: calls Neutrino, infers 3DS support, assigns `patch_status`
-- `neutrino_api.py` - `NeutrinoAPIClient`: authenticates via `User-ID`/`API-Key` headers
+- `bin_enricher.py` - `BinEnricher` class: uses Adyen BinLookup for real 3DS data, Neutrino for metadata, heuristic fallback
+- `neutrino_api.py` - `NeutrinoAPIClient`: authenticates via `User-ID`/`API-Key` headers (supplementary metadata)
+- `adyen_client.py` - `AdyenBinLookupClient`: queries Adyen `get3dsAvailability` for real 3DS enrollment data
 - `fraud_feed.py` - `FraudFeedScraper`: scrapes public feeds, extracts PANs, classifies exploits
 - `utils.py` - CSV/JSON export helpers
 - `templates/dashboard.html` - Primary dashboard UI
@@ -35,13 +46,13 @@ NEUTRINO_API_KEY="your_api_key"                         # Required for enrichmen
 ## Exploit Types (3 total)
 
 - `card-not-present` - BINs used in CNP/online fraud
-- `false-positive-cvv` - BINs where CVV verification is weak
+- `cvv-weak` - BINs where CVV verification is weak (issuer returns response code U or P)
 - `no-auto-3ds` - BINs lacking automatic 3DS frictionless flow
 
 ## patch_status Values
 
 - `Patched` - at least one of `threeds1_supported` or `threeds2_supported` is true
-- `Exploitable` - neither 3DS version supported (heuristic inference, not directory lookup)
+- `Exploitable` - neither 3DS version supported (Adyen lookup or heuristic inference)
 
 ## Dev Notes
 

@@ -36,18 +36,18 @@ KEYWORD_TO_EXPLOIT_TYPE = {
     "virtual": "card-not-present",
     
     # False-positive CVV keywords
-    "cvv": "false-positive-cvv",
-    "cvv2": "false-positive-cvv",
-    "cvc": "false-positive-cvv",
-    "verification": "false-positive-cvv",
-    "security code": "false-positive-cvv",
-    "bypass": "false-positive-cvv",
-    "wrong cvv": "false-positive-cvv",
-    "incorrect cvv": "false-positive-cvv",
-    "any cvv": "false-positive-cvv",
-    "000": "false-positive-cvv",
-    "random": "false-positive-cvv",
-    "weak verification": "false-positive-cvv"
+    "cvv": "cvv-weak",
+    "cvv2": "cvv-weak",
+    "cvc": "cvv-weak",
+    "verification": "cvv-weak",
+    "security code": "cvv-weak",
+    "bypass": "cvv-weak",
+    "wrong cvv": "cvv-weak",
+    "incorrect cvv": "cvv-weak",
+    "any cvv": "cvv-weak",
+    "000": "cvv-weak",
+    "random": "cvv-weak",
+    "weak verification": "cvv-weak"
 }
 
 # PAN regex pattern - matches credit card numbers with optional separators
@@ -192,13 +192,13 @@ class FraudFeedScraper:
         """
         Handle the case when no real data is found from feeds.
         We don't generate synthetic data anymore, only return an empty list.
-        
+
         Returns:
             Empty list - we only want real-world data
         """
         logger.warning("No real BINs found from data feeds. No synthetic data will be generated.")
         return []
-        
+
     def fetch_exploited_bins(self, top_n=100, sample_pages=5) -> List[Tuple[str, str]]:
         """
         Fetch exploited BINs from public card-dump feeds and classify exploit types.

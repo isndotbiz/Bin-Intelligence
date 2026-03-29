@@ -1,5 +1,8 @@
+import json
 import logging
+import os
 import time
+from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 
 # Configure logging
@@ -10,16 +13,72 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class BinEnricher:
-    """Class to enrich BIN data with issuer information and 3DS support using Neutrino API"""
-    
+    """Class to enrich BIN data with issuer information and 3DS support.
+
+    Uses Adyen BinLookup API for real 3DS enrollment data when available,
+    falls back to heuristic inference when Adyen credentials are not configured.
+    Neutrino API provides supplementary metadata (issuer, brand, country).
+    """
+
     # List of allowed card brands - we only want to track these major networks
     ALLOWED_BRANDS = [
         "VISA", "MASTERCARD", "AMERICAN EXPRESS", "AMEX", "DISCOVER"
     ]
-    
+
+    CACHE_FILE = "adyen_3ds_cache.json"
+    CACHE_TTL_DAYS = 30
+
     def __init__(self):
-        """Initialize the BIN enricher"""
-        pass
+        """Initialize the BIN enricher with Adyen client for real 3DS data"""
+        from adyen_client import AdyenBinLookupClient
+        self._adyen = AdyenBinLookupClient()
+        self._use_adyen = self._adyen.available
+
+        # Initialize Neutrino client once (reuse session across all lookups)
+        from neutrino_api import NeutrinoAPIClient
+        try:
+            self._neutrino = NeutrinoAPIClient()
+        except ValueError:
+            self._neutrino = None
+
+        # Load 3DS cache from disk
+        self._3ds_cache = self._load_cache()
+
+    def _load_cache(self) -> Dict[str, Any]:
+        """Load Adyen 3DS results cache from disk."""
+        try:
+            if os.path.exists(self.CACHE_FILE):
+                with open(self.CACHE_FILE, 'r') as f:
+                    cache = json.load(f)
+                logger.info(f"Loaded {len(cache)} cached 3DS results from {self.CACHE_FILE}")
+                return cache
+        except Exception as e:
+            logger.warning(f"Failed to load 3DS cache: {e}")
+        return {}
+
+    def _save_cache(self):
+        """Persist Adyen 3DS results cache to disk."""
+        try:
+            with open(self.CACHE_FILE, 'w') as f:
+                json.dump(self._3ds_cache, f)
+        except Exception as e:
+            logger.warning(f"Failed to save 3DS cache: {e}")
+
+    def _get_cached_3ds(self, bin_code: str) -> Optional[Dict[str, Any]]:
+        """Return cached Adyen 3DS result if fresh (within TTL)."""
+        entry = self._3ds_cache.get(bin_code)
+        if not entry:
+            return None
+        cached_at = datetime.fromisoformat(entry.get("cached_at", "2000-01-01"))
+        if datetime.utcnow() - cached_at > timedelta(days=self.CACHE_TTL_DAYS):
+            return None
+        return entry
+
+    def _cache_3ds(self, bin_code: str, data: Dict[str, Any]):
+        """Store Adyen 3DS result in cache with timestamp."""
+        data["cached_at"] = datetime.utcnow().isoformat()
+        self._3ds_cache[bin_code] = data
+        self._save_cache()
     
     def enrich_bin(self, bin_code: str) -> Optional[Dict[str, Any]]:
         """
@@ -62,25 +121,39 @@ class BinEnricher:
             logger.info(f"Skipping BIN {bin_code}: brand '{bin_data.get('brand')}' not in allowed list")
             return None
             
-        # Add 3DS support determination based on card brand and issuer
-        bin_data["threeDS1Supported"] = self._check_3ds1_support(bin_code, bin_data)
-        bin_data["threeDS2supported"] = self._check_3ds2_support(bin_code, bin_data)
-        bin_data["auto3DSSupported"] = self._check_auto_3ds_support(bin_code, bin_data)
-        
+        # Get 3DS data: check cache first, then Adyen API, then heuristic fallback
+        adyen_data = self._get_cached_3ds(bin_code)
+        if adyen_data:
+            logger.debug(f"Using cached 3DS data for BIN {bin_code}")
+        elif self._use_adyen:
+            adyen_data = self._adyen.get_3ds_availability(bin_code)
+            if adyen_data:
+                self._cache_3ds(bin_code, adyen_data)
+
+        if adyen_data:
+            bin_data["threeDS1Supported"] = adyen_data["threeDS1Supported"]
+            bin_data["threeDS2supported"] = adyen_data["threeDS2supported"]
+            bin_data["auto3DSSupported"] = adyen_data.get("auto3DSSupported", False)
+            bin_data["threeds_data_source"] = "adyen"
+        else:
+            # Heuristic fallback when Adyen is not available
+            bin_data["threeDS1Supported"] = self._check_3ds1_support_heuristic(bin_code, bin_data)
+            bin_data["threeDS2supported"] = self._check_3ds2_support_heuristic(bin_code, bin_data)
+            bin_data["auto3DSSupported"] = self._check_auto_3ds_support_heuristic(bin_code, bin_data, bin_data["threeDS2supported"])
+            bin_data["threeds_data_source"] = "heuristic"
+
         # Determine patch status based on 3DS support
         bin_data["patch_status"] = self._determine_patch_status(
-            bin_data["threeDS1Supported"], 
+            bin_data["threeDS1Supported"],
             bin_data["threeDS2supported"]
         )
-        
+
         # Determine the exploit type based on 3DS and Auto 3DS support
         if not bin_data["auto3DSSupported"]:
             bin_data["exploit_type"] = "no-auto-3ds"
         else:
-            # For cards with auto 3DS support, default to card-not-present
-            # This can be overridden later for cross-border fraud
             bin_data["exploit_type"] = "card-not-present"
-        
+
         return bin_data
     
     def _get_bin_data_from_neutrinoapi(self, bin_code: str) -> Optional[Dict[str, Any]]:
@@ -94,13 +167,14 @@ class BinEnricher:
             Dictionary with real BIN information or None if lookup failed
         """
         try:
-            from neutrino_api import NeutrinoAPIClient
-            
+            if not self._neutrino:
+                logger.warning(f"Neutrino API not configured, cannot look up BIN {bin_code}")
+                return None
+
             # Add a minimal delay to avoid hitting rate limits
             time.sleep(0.1)
-            
-            client = NeutrinoAPIClient()
-            bin_data = client.lookup_bin(bin_code)
+
+            bin_data = self._neutrino.lookup_bin(bin_code)
             
             if bin_data:
                 logger.info(f"Successfully retrieved real data for BIN {bin_code} from Neutrino API")
@@ -113,7 +187,7 @@ class BinEnricher:
             logger.error(f"Error retrieving data for BIN {bin_code} from Neutrino API: {str(e)}")
             return None
     
-    def _check_3ds1_support(self, bin_code: str, bin_data: Dict[str, Any]) -> bool:
+    def _check_3ds1_support_heuristic(self, bin_code: str, bin_data: Dict[str, Any]) -> bool:
         """
         Check if the BIN supports 3DS version 1 based on card data
         
@@ -143,7 +217,7 @@ class BinEnricher:
             # Default to not supported
             return False
     
-    def _check_3ds2_support(self, bin_code: str, bin_data: Dict[str, Any]) -> bool:
+    def _check_3ds2_support_heuristic(self, bin_code: str, bin_data: Dict[str, Any]) -> bool:
         """
         Check if the BIN supports 3DS version 2 based on card data
         
@@ -168,7 +242,7 @@ class BinEnricher:
             # Default to not supported
             return False
     
-    def _check_auto_3ds_support(self, bin_code: str, bin_data: Dict[str, Any]) -> bool:
+    def _check_auto_3ds_support_heuristic(self, bin_code: str, bin_data: Dict[str, Any], threeds2_precomputed: bool = None) -> bool:
         """
         Check if the BIN supports automatic 3DS authentication without user intervention
         
@@ -183,7 +257,7 @@ class BinEnricher:
         brand = bin_data.get("brand", "").upper()
         issuer = bin_data.get("issuer", "").upper()
         country = bin_data.get("country", "").upper()
-        threeds2_supported = self._check_3ds2_support(bin_code, bin_data)
+        threeds2_supported = threeds2_precomputed if threeds2_precomputed is not None else self._check_3ds2_support_heuristic(bin_code, bin_data)
         
         # Auto 3DS is only available with 3DS2, so that's a prerequisite
         if not threeds2_supported:

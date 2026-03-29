@@ -56,18 +56,29 @@ else:
 
 # Initialize exploit types in the database
 def init_exploit_types():
-    """Initialize the exploit types in the database if they don't exist"""
+    """Initialize the exploit types in the database if they don't exist.
+
+    Env vars for new data sources (optional — system works without them):
+      ADYEN_API_KEY, ADYEN_MERCHANT_ACCOUNT — Adyen BinLookup for real 3DS enrollment
+    """
     exploit_types = {
         "card-not-present": "Fraud in online transactions where physical card is not present during checkout",
-        "false-positive-cvv": "Cards with weak CVV verification that accept any CVV value during transaction",
+        "cvv-weak": "BINs where CVV verification is weak — issuer returns response code U (not certified) or P (not processed)",
         "no-auto-3ds": "Cards lacking automatic 3D Secure authentication for online purchases"
     }
-    
+
+    # Rename legacy false-positive-cvv to cvv-weak if it exists
+    legacy = db_session.query(ExploitType).filter(ExploitType.name == "false-positive-cvv").first()
+    if legacy:
+        legacy.name = "cvv-weak"
+        legacy.description = exploit_types["cvv-weak"]
+        logger.info("Renamed exploit type 'false-positive-cvv' to 'cvv-weak'")
+
     # Check and add each exploit type if it doesn't exist
     for name, description in exploit_types.items():
         if not db_session.query(ExploitType).filter(ExploitType.name == name).first():
             db_session.add(ExploitType(name=name, description=description))
-    
+
     db_session.commit()
 
 # Initialize the database with exploit types
@@ -172,7 +183,10 @@ def save_bins_to_database(enriched_bins):
                     transaction_country=bin_data.get("transaction_country"),
                     threeds1_supported=bin_data.get("threeDS1Supported", False),
                     threeds2_supported=bin_data.get("threeDS2supported", False),
-                    patch_status=bin_data.get("patch_status")
+                    patch_status=bin_data.get("patch_status"),
+                    cvv_response_code=bin_data.get("cvv_response_code"),
+                    cvv_decline_rate=bin_data.get("cvv_decline_rate"),
+                    threeds_data_source=bin_data.get("threeds_data_source")
                 )
                 session.add(bin_record)
                 created_count += 1
@@ -190,6 +204,9 @@ def save_bins_to_database(enriched_bins):
                     "threeds1_supported": bin_data.get("threeDS1Supported", bin_record.threeds1_supported),
                     "threeds2_supported": bin_data.get("threeDS2supported", bin_record.threeds2_supported),
                     "patch_status": bin_data.get("patch_status", bin_record.patch_status),
+                    "cvv_response_code": bin_data.get("cvv_response_code", bin_record.cvv_response_code),
+                    "cvv_decline_rate": bin_data.get("cvv_decline_rate", bin_record.cvv_decline_rate),
+                    "threeds_data_source": bin_data.get("threeds_data_source", bin_record.threeds_data_source),
                     "updated_at": datetime.utcnow()
                 }
                 # Update with setattr to avoid LSP errors
@@ -1149,7 +1166,7 @@ def generate_more_bins():
         exploit_type_map = {et.name: et for et in exploit_types}
         
         # Assign real e-commerce exploit types to all BINs
-        e_commerce_exploit_types = ["card-not-present", "false-positive-cvv", "no-auto-3ds"]
+        e_commerce_exploit_types = ["card-not-present", "cvv-weak", "no-auto-3ds"]
         for bin_data in enriched_bins:
             bin_data["exploit_type"] = random.choice(e_commerce_exploit_types)
             logger.info(f"BIN {bin_data['BIN']} assigned e-commerce exploit type: {bin_data['exploit_type']}")
